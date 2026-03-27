@@ -9,6 +9,6 @@
 
 int main(void)
 {
-    std::cout << "Hello, Epitech!" << std::endl;
+    std::cout << "Work in progress !" << std::endl;
     return 0;
 }

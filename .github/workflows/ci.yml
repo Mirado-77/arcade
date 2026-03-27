@@ -15,7 +15,7 @@ on:
 
 env:
   MIRROR_URL: ${{ vars.MIRROR_URL }}
-  EXECUTABLE_NAME: my_project
+  EXECUTABLE_NAME: arcade
 
 jobs:
   build-test-mirror:
