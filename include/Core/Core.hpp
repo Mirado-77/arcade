@@ -8,9 +8,11 @@
 #ifndef CORE_HPP
     #define CORE_HPP
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Core/DLLoader.hpp"
 #include "IDisplayModule.hpp"
 #include "IGameModule.hpp"
@@ -24,17 +26,25 @@ namespace arc {
             void run();
 
         private:
-            static constexpr std::string_view DEFAULT_GAME =
-                "./lib/arcade_dummy_game.so";
+            static constexpr std::string_view LIB_DIR = "./lib";
 
+            std::vector<std::string> _displayLibs;
+            std::vector<std::string> _gameLibs;
+            std::size_t _displayIdx;
+            std::size_t _gameIdx;
             std::unique_ptr<DLLoader> _displayLoader;
             std::unique_ptr<DLLoader> _gameLoader;
             std::shared_ptr<IDisplayModule> _display;
             std::shared_ptr<IGameModule> _game;
 
+            void scanLibs();
+            void tryCategorizeLib(const std::string &path);
             void loadDisplay(const std::string &path);
             void loadGame(const std::string &path);
-            bool handleCoreEvent(const Event &event) const noexcept;
+            void nextDisplay();
+            void nextGame();
+            void restartGame();
+            bool processEvent(const Event &event);
     };
 }
 
