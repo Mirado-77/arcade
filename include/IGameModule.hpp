@@ -28,7 +28,6 @@ namespace arc {
             virtual Assets getAssets() = 0;
             virtual std::pair<Entities, Sounds> getElements() = 0;
             virtual bool isOpen() = 0;
-            virtual SelectLibs libChanges(Libs) = 0;
     };
 }
 
