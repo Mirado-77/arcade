@@ -40,7 +40,7 @@ add_library(arcade_ncurses SHARED
 set_target_properties(arcade_ncurses PROPERTIES PREFIX "")
 target_include_directories(arcade_ncurses PRIVATE include plugins/NcursesDisplay ${CURSES_INCLUDE_DIR})
 target_link_libraries(arcade_ncurses PRIVATE ${CURSES_LIBRARIES})
-target_compile_options(arcade_ncurses PRIVATE -fno-gnu-unique)
+target_compile_options(arcade_ncurses PRIVATE)
 
 # SfmlDisplay plugin
 
@@ -52,7 +52,7 @@ add_library(arcade_sfml SHARED
 set_target_properties(arcade_sfml PROPERTIES PREFIX "")
 target_include_directories(arcade_sfml PRIVATE include plugins/SfmlDisplay)
 target_link_libraries(arcade_sfml PRIVATE sfml-graphics sfml-window sfml-system)
-target_compile_options(arcade_sfml PRIVATE -fno-gnu-unique)
+target_compile_options(arcade_sfml PRIVATE)
 
 # Snake plugin
 
@@ -61,7 +61,7 @@ add_library(arcade_snake SHARED
 )
 set_target_properties(arcade_snake PROPERTIES PREFIX "")
 target_include_directories(arcade_snake PRIVATE include plugins/Snake)
-target_compile_options(arcade_snake PRIVATE -fno-gnu-unique)
+target_compile_options(arcade_snake PRIVATE)
 
 # Tests
 

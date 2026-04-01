@@ -8,14 +8,14 @@
 #ifndef CORE_HPP
     #define CORE_HPP
 
-#include <cstddef>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <vector>
-#include "Core/DLLoader.hpp"
-#include "IDisplayModule.hpp"
-#include "IGameModule.hpp"
+    #include <cstddef>
+    #include <memory>
+    #include <string>
+    #include <string_view>
+    #include <vector>
+    #include "Core/DLLoader.hpp"
+    #include "IDisplayModule.hpp"
+    #include "IGameModule.hpp"
 
 namespace arc {
     class Core {
