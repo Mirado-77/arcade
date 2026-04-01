@@ -13,7 +13,7 @@
 arc::DLLoader::DLLoader(const std::string &path)
     : _handle(0)
 {
-    void *handle = dlopen(path.c_str(), RTLD_LAZY);
+    void *handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE);
 
     if (!handle) {
         throw std::runtime_error(dlerror());

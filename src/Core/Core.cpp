@@ -109,7 +109,9 @@ bool arc::Core::processEvent(const Event &event)
 
 void arc::Core::run()
 {
-    while (_game->isOpen()) {
+    while (true) {
+        if (!_game->isOpen())
+            restartGame();
         arc::Event event = _display->getEvent();
         if (processEvent(event))
             break;
