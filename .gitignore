@@ -16,7 +16,7 @@ Makefile
 # Executables
 *.exe
 *.out
-my_project
+arcade
 unit_tests
 
 # Debug files
