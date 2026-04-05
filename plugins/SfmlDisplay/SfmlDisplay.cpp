@@ -131,7 +131,8 @@ void arc::SfmlDisplay::drawEntitySprite(
     auto texSize = _textures[texIdx].getSize();
     sf::Sprite sprite(_textures[texIdx]);
     sprite.setScale(size.x / texSize.x, size.y / texSize.y);
-    sprite.setPosition(pos);
+    sprite.setOrigin(texSize.x / 2.f, texSize.y / 2.f);
+    sprite.setPosition(pos.x + size.x / 2.f, pos.y + size.y / 2.f);
     sprite.setRotation(entity->getRotation());
     _window.draw(sprite);
 }
@@ -141,7 +142,8 @@ void arc::SfmlDisplay::drawEntityRect(
     sf::Vector2f pos, sf::Vector2f size, int idx)
 {
     sf::RectangleShape rect(size);
-    rect.setPosition(pos);
+    rect.setOrigin(size.x / 2.f, size.y / 2.f);
+    rect.setPosition(pos.x + size.x / 2.f, pos.y + size.y / 2.f);
     rect.setFillColor(toColor(entity->getColor()));
     rect.setRotation(entity->getRotation());
     _window.draw(rect);
@@ -162,12 +164,18 @@ void arc::SfmlDisplay::drawEntityRect(
 
 void arc::SfmlDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)
 {
-    auto [x, y] = entity->getPos();
+    auto [px, py] = entity->getPos();
     auto [sw, sh] = entity->getSize();
-    sf::Vector2f size(
-        (sw > 0.f ? sw : 1.f) * CELL, (sh > 0.f ? sh : 1.f) * CELL);
+    float availW = static_cast<float>(WIN_W);
+    float availH = static_cast<float>(WIN_H - HUD_H);
     sf::Vector2f pos(
-        x * CELL, static_cast<float>(HUD_H) + y * CELL);
+        px * availW,
+        static_cast<float>(HUD_H) + py * availH);
+    sf::Vector2f size(
+        sw * availW,
+        sh * availH);
+    if (size.x < 1.f) size.x = 1.f;
+    if (size.y < 1.f) size.y = 1.f;
     int idx = entity->getIdx();
     bool hasTexture = idx >= 0
         && idx < static_cast<int>(_textures.size())

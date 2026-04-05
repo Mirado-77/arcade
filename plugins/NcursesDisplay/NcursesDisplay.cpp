@@ -8,6 +8,7 @@
 #include "NcursesDisplay.hpp"
 #include "ISound.hpp"
 #include <algorithm>
+#include <fstream>
 
 const std::unordered_map<int, arc::Action> arc::NcursesDisplay::KEY_MAP = {
     {KEY_UP, Action::Up},
@@ -105,9 +106,29 @@ arc::Event arc::NcursesDisplay::getEvent() noexcept
 int arc::NcursesDisplay::setAssets(const Assets assets) noexcept
 {
     _assets = assets;
-    _maxGameX = 0;
-    _maxGameY = 0;
+    _textAssets.clear();
+    for (const auto &path : assets.first) {
+        std::ifstream file(path + ".txt");
+        std::string line;
+        if (file.is_open() && std::getline(file, line))
+            _textAssets.push_back(line);
+        else
+            _textAssets.push_back("");
+    }
     return 0;
+}
+
+std::string arc::NcursesDisplay::getDisplayStr(
+    const std::unique_ptr<IEntity> &entity) const noexcept
+{
+    int idx = entity->getIdx();
+    if (idx >= 0 && idx < static_cast<int>(_textAssets.size())
+        && !_textAssets[static_cast<std::size_t>(idx)].empty())
+        return _textAssets[static_cast<std::size_t>(idx)];
+    auto str = entity->getStr();
+    if (str.has_value())
+        return str.value();
+    return std::string(1, static_cast<char>(idx + 33));
 }
 
 void arc::NcursesDisplay::drawEntity(
@@ -115,18 +136,17 @@ void arc::NcursesDisplay::drawEntity(
 {
     if (entity->getIdx() < 0)
         return;
-    auto [x, y] = entity->getPos();
-    auto str = entity->getStr();
+    auto [px, py] = entity->getPos();
     auto color = entity->getColor();
-    int col = static_cast<int>(x) + 1;
-    int row = static_cast<int>(y) + 2;
+    int col = static_cast<int>(px * static_cast<float>(COLS));
+    int row = 1 + static_cast<int>(py * static_cast<float>(LINES - 2));
     int pair = selectColorPair(color);
+    std::string s = getDisplayStr(entity);
 
+    if (col < 0 || row < 1 || col >= COLS || row >= LINES)
+        return;
     attron(COLOR_PAIR(pair));
-    if (str.has_value())
-        mvprintw(row, col, "%s", str.value().c_str());
-    else
-        mvprintw(row, col, "%c", static_cast<char>(entity->getIdx() + 33));
+    mvprintw(row, col, "%s", s.c_str());
     attroff(COLOR_PAIR(pair));
 }
 
@@ -143,37 +163,13 @@ int arc::NcursesDisplay::selectColorPair(arc::RGBA color) const noexcept
     return 7;
 }
 
-void arc::NcursesDisplay::drawBorder() noexcept
-{
-    int right = _maxGameX + 2;
-    int bot = _maxGameY + 3;
-    mvhline(1,   0,     ACS_HLINE, right + 1);
-    mvhline(bot, 0,     ACS_HLINE, right + 1);
-    mvvline(1,   0,     ACS_VLINE, bot - 1);
-    mvvline(1,   right, ACS_VLINE, bot - 1);
-    mvaddch(1,   0,     ACS_ULCORNER);
-    mvaddch(1,   right, ACS_URCORNER);
-    mvaddch(bot, 0,     ACS_LLCORNER);
-    mvaddch(bot, right, ACS_LRCORNER);
-}
-
 void arc::NcursesDisplay::drawGame(
     const std::pair<Entities, Sounds> data) noexcept
 {
     const auto &[entities, sounds] = data;
     clear();
-    for (const auto &entity : entities) {
-        auto [x, y] = entity->getPos();
-        int gx = static_cast<int>(x);
-        int gy = static_cast<int>(y);
-        if (gx > _maxGameX)
-            _maxGameX = gx;
-        if (gy > _maxGameY)
-            _maxGameY = gy;
+    for (const auto &entity : entities)
         drawEntity(entity);
-    }
-    if (_maxGameX > 0 || _maxGameY > 0)
-        drawBorder();
     mvprintw(0, 0, "[ncurses] F2=SwapDisp F3=SwapGame F4=Restart ESC=Quit");
     refresh();
     (void)sounds;

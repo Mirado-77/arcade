@@ -10,6 +10,8 @@
 
     #include <ncurses.h>
     #include <unordered_map>
+    #include <string>
+    #include <vector>
     #include "IDisplayModule.hpp"
 
 namespace arc {
@@ -26,11 +28,10 @@ namespace arc {
             static const std::unordered_map<int, Action> KEY_MAP;
 
             Assets _assets;
-            int _maxGameX = 0;
-            int _maxGameY = 0;
+            std::vector<std::string> _textAssets;
 
             void drawEntity(const std::unique_ptr<IEntity> &entity) const noexcept;
-            void drawBorder() noexcept;
+            std::string getDisplayStr(const std::unique_ptr<IEntity> &entity) const noexcept;
             Action mapKey(int key) const noexcept;
             Action mapMouseButton(mmask_t bstate) const noexcept;
             Event getMouseEvent() noexcept;

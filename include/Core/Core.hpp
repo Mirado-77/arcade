@@ -14,6 +14,7 @@
     #include <string_view>
     #include <vector>
     #include "Core/DLLoader.hpp"
+    #include "Core/ScoreManager.hpp"
     #include "IDisplayModule.hpp"
     #include "IGameModule.hpp"
 
@@ -25,9 +26,13 @@ namespace arc {
 
             void run();
 
+            ScoreManager &getScores() noexcept;
+
         private:
             static constexpr std::string_view LIB_DIR = "./lib";
+            static constexpr std::string_view SCORE_FILE = "scores.txt";
 
+            ScoreManager _scores;
             std::vector<std::string> _displayLibs;
             std::vector<std::string> _gameLibs;
             std::size_t _displayIdx;
