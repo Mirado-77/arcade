@@ -116,18 +116,14 @@ std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements() noexcept
     constexpr arc::RGBA bodyColor = {0, 200, 0, 255};
     constexpr arc::RGBA foodColor = {255, 50, 50, 255};
 
-    entities.push_back(
-        std::make_unique<arc::SnakeEntity>(_body.front(), 0, "S", headColor));
+    entities.push_back(std::make_unique<arc::SnakeEntity>(
+        _body.front(), 0, "S", headColor, WIDTH, HEIGHT));
     for (std::size_t i = 1; i < _body.size(); ++i) {
-        entities.push_back(
-            std::make_unique<arc::SnakeEntity>(_body[i], 1, "o", bodyColor));
+        entities.push_back(std::make_unique<arc::SnakeEntity>(
+            _body[i], 1, "o", bodyColor, WIDTH, HEIGHT));
     }
-    entities.push_back(
-        std::make_unique<arc::SnakeEntity>(_food, 2, "*", foodColor));
-    entities.push_back(
-        std::make_unique<arc::SnakeEntity>(
-            std::make_pair(WIDTH - 1, HEIGHT - 1), -1, "",
-            arc::RGBA{0, 0, 0, 0}));
+    entities.push_back(std::make_unique<arc::SnakeEntity>(
+        _food, 2, "*", foodColor, WIDTH, HEIGHT));
     return {std::move(entities), std::move(sounds)};
 }
 

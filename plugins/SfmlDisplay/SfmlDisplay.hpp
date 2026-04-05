@@ -25,7 +25,6 @@ namespace arc {
             void drawGame(const std::pair<Entities, Sounds> data) noexcept override;
 
         private:
-            static constexpr float CELL = 32.f;
             static constexpr unsigned WIN_W = 1280u;
             static constexpr unsigned WIN_H = 720u;
             static constexpr unsigned HUD_H = 30u;

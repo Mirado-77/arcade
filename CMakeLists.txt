@@ -23,6 +23,7 @@ file(GLOB_RECURSE SRC_CORE
     src/main.cpp
     src/Core/Core.cpp
     src/Core/DLLoader.cpp
+    src/Core/ScoreManager.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SRC_CORE})
@@ -43,14 +44,14 @@ target_compile_options(arcade_ncurses PRIVATE)
 
 # SfmlDisplay plugin
 
-find_package(SFML 2 REQUIRED COMPONENTS graphics window system)
+find_package(SFML 2 REQUIRED COMPONENTS graphics window system audio)
 
 add_library(arcade_sfml SHARED
     plugins/SfmlDisplay/SfmlDisplay.cpp
 )
 set_target_properties(arcade_sfml PROPERTIES PREFIX "")
 target_include_directories(arcade_sfml PRIVATE include plugins/SfmlDisplay)
-target_link_libraries(arcade_sfml PRIVATE sfml-graphics sfml-window sfml-system)
+target_link_libraries(arcade_sfml PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
 target_compile_options(arcade_sfml PRIVATE)
 
 # Snake plugin

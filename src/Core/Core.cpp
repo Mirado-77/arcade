@@ -11,7 +11,8 @@
 #include "Core/Core.hpp"
 
 arc::Core::Core(const std::string &displayPath)
-    : _displayIdx(0), _gameIdx(0)
+    : _scores(std::string(SCORE_FILE)),
+      _displayIdx(0), _gameIdx(0)
 {
     scanLibs();
     if (_displayLibs.empty())
@@ -133,6 +134,11 @@ bool arc::Core::processCommands()
             return true;
     }
     return false;
+}
+
+arc::ScoreManager &arc::Core::getScores() noexcept
+{
+    return _scores;
 }
 
 void arc::Core::run()
