@@ -1,336 +1,332 @@
-# Arcade — Documentation provisoire des interfaces
+# Arcade — Documentation des interfaces
 
-> Cette documentation décrit **l’état actuel** des interfaces `Arcade.hpp`, `IEntity.hpp`, `ISound.hpp`, `IDisplayModule.hpp` et `IGameModule.hpp`.
+> Cette documentation décrit les interfaces du projet Arcade et explique comment développer de nouvelles bibliothèques graphiques et de nouveaux jeux compatibles.
+
 ---
 
 ## 1. Objectif global
 
-Dans le projet Arcade, le programme principal charge dynamiquement :
-
-- des **bibliothèques graphiques** ;
-- des **bibliothèques de jeu**.
-
-Le sujet impose que ces bibliothèques soient chargées au runtime avec `dlopen`, `dlsym`, `dlclose` et `dlerror`, et précise que le core ne doit pas dépendre explicitement d’une bibliothèque graphique donnée. Les bibliothèques doivent être placées dans `./lib/`, et le système doit rester générique, afin de permettre l’échange d’interfaces et de modules avec d’autres groupes. Le sujet demande aussi une documentation expliquant comment développer de nouvelles bibliothèques graphiques et de nouveaux jeux compatibles. Enfin, il impose le partage d’interface avec au moins un autre groupe. 
+Le programme principal charge dynamiquement des bibliothèques graphiques et des bibliothèques de jeu via `dlopen`/`dlsym`/`dlclose`. Les bibliothèques compilées (`.so`) doivent être placées dans `./lib/`. Le système est générique : toute bibliothèque respectant les interfaces et les entrypoints décrits ici est compatible.
 
 ---
 
-## 2. Vue d’ensemble des fichiers
+## 2. Entrypoints obligatoires
 
-Les interfaces actuellement prévues sont :
+Chaque bibliothèque dynamique (graphique ou jeu) doit exporter deux fonctions en `extern "C"` :
 
-- `Arcade.hpp` : types partagés de base ;
-- `IEntity.hpp` : abstraction d’un élément affichable ;
-- `ISound.hpp` : abstraction d’un son déclenché par le jeu ;
-- `IDisplayModule.hpp` : contrat d’une bibliothèque graphique ;
-- `IGameModule.hpp` : contrat d’une bibliothèque de jeu.
+```cpp
+extern "C" {
+    std::unique_ptr<arc::IDisplayModule> makeInstance(); // pour une lib graphique
+    // OU
+    std::unique_ptr<arc::IGameModule> makeInstance();    // pour une lib de jeu
 
-L’idée générale est la suivante :
+    arc::LibType getLibType();
+}
+```
 
-1. le **core** récupère les événements utilisateur via un module graphique ;
-2. il transmet ces événements au **module de jeu** ;
-3. le jeu simule un tick et renvoie des **entités** et des **sons** ;
-4. le module graphique dessine ces éléments avec les assets correspondants.
+### `makeInstance()`
+
+Retourne une instance unique du module. Le core appelle cette fonction après `dlopen` pour obtenir l'objet polymorphe. Aucun argument.
+
+### `getLibType()`
+
+Retourne le type de la bibliothèque :
+
+```cpp
+enum class LibType {
+    None,
+    Display,   // bibliothèque graphique
+    Game,      // bibliothèque de jeu
+};
+```
+
+Le core utilise `getLibType()` pour catégoriser automatiquement toute `.so` trouvée dans `./lib/`.
+
+### Exemple minimal (bibliothèque graphique)
+
+```cpp
+#include "IDisplayModule.hpp"
+
+class MyDisplay : public arc::IDisplayModule { /* ... */ };
+
+extern "C" {
+    std::unique_ptr<arc::IDisplayModule> makeInstance()
+    {
+        return std::make_unique<MyDisplay>();
+    }
+    arc::LibType getLibType()
+    {
+        return arc::LibType::Display;
+    }
+}
+```
 
 ---
 
-## 3. Documentation de `Arcade.hpp`
+## 3. Types communs (`Arcade.hpp`)
 
-`Arcade.hpp` centralise plusieurs types communs utilisés par les autres interfaces.
-
-### 3.1 `Vector2f`
+### `Vector2f`
 
 ```cpp
 using Vector2f = std::pair<float, float>;
 ```
 
-`Vector2f` représente un couple de coordonnées.
+Couple de coordonnées flottantes. Utilisé pour les positions et tailles des entités.
 
-Usage attendu :
+**Important** : les valeurs sont des **pourcentages** entre `0.0` et `1.0`, relatives à la surface de jeu. Le module graphique est responsable de la conversion vers ses propres coordonnées pixel ou caractère :
 
-- position d’une entité ;
-- taille d’une entité ;
+- `pixel_x = pos.x * largeur_fenetre`
+- `pixel_y = pos.y * hauteur_zone_jeu`
 
-### 3.2 `Assets`
+### `Assets`
 
 ```cpp
 using Assets = std::pair<std::vector<std::string>,
     std::vector<std::string>>;
 ```
 
-`Assets` représente l’ensemble des ressources nécessaires à un jeu.
+- `first` : liste de chemins vers les **assets graphiques**, **sans extension** (ex. `"assets/snake/head"`). Le module graphique y ajoute `.png`, `.jpg`, etc. Pour ncurses, il cherche `<chemin>.txt` et lit la première ligne comme caractère d'affichage.
+- `second` : liste de chemins vers les **assets sonores** (ex. `"assets/eat.wav"`).
 
-Les deux listes correspondent à :
+Les index retournés par `IEntity::getIdx()` et `ISound::getIdx()` correspondent à ces listes.
 
-- une liste pour les **assets graphiques** (sans l'extension de fichier) ;
-- une liste pour les **assets sonores** (avec l'extension de fichier).
+### `Action`
 
-Chaque entrée correspond à un chemin / un nom d’asset.
-
-### 3.3 `Action`
+Enumération de toutes les entrées possibles :
 
 ```cpp
-enum class Action { ... };
+enum class Action {
+    None,
+    A .. Z,
+    Num0 .. Num9,
+    Escape, Enter, Space, Backspace, Tab,
+    Left, Right, Up, Down,
+    F1 .. F15,
+    LeftMouse, RightMouse, MiddleMouse,
+    Close,
+    // ...
+};
 ```
 
-`Action` est l’énumération de toutes les actions d’entrée connues par le système.
+`Action::None` : aucune action significative. `Action::Close` : fermeture de fenêtre.
 
-Elle contient notamment :
-
-- les lettres `A` à `Z` ;
-- les chiffres `Num0` à `Num9` ;
-- les touches de contrôle (`Escape`, `Enter`, `Tab`, etc.) ;
-- les flèches (`Left`, `Right`, `Up`, `Down`) ;
-- les touches de fonction (`F1` à `F15`) ;
-- les boutons de souris ;
-- `Close` pour signaler une fermeture de fenêtre ;
-- `None` pour une touche non gérée ou l’absence d’action significative.
-
-Cette énumération sert de format d’entrée unifié entre bibliothèques graphiques et jeux.
-
-### 3.4 `Event`
+### `Event`
 
 ```cpp
 using Event = std::pair<Action, Vector2f>;
 ```
 
-`Event` regroupe :
+- `first` : l'`Action` détectée
+- `second` : position associée (ex. coordonnées souris dans la fenêtre)
 
-- une `Action` ;
-- un `Vector2f`.
+### `Signal`
 
-Usage attendu :
+```cpp
+enum class Signal {
+    LoadDisplay,   // changer de bibliothèque graphique
+    LoadGame,      // changer de bibliothèque de jeu
+    RestartGame,   // redémarrer le jeu courant
+    BackToMenu,    // retourner au menu
+    Quit,          // quitter l'application
+};
+```
 
-- l’`Action` indique la touche ou l’événement principal ;
-- le `Vector2f` transporte une information de position, par exemple pour la souris.
+### `Command`
 
-Cela permet à une lib graphique de remonter aussi bien des entrées clavier que des événements liés à une position à l’écran.
+```cpp
+using Command = std::pair<Signal, std::vector<std::string>>;
+```
+
+Une commande émise par un jeu vers le core via `loadCommand()`. Le `Signal` indique l'action souhaitée, le `vector<string>` transporte les arguments (ex. le chemin de la lib à charger pour `LoadDisplay`/`LoadGame`).
 
 ---
 
-## 4. Documentation de `IEntity.hpp`
-
-`IEntity` décrit une entité rendered par une bibliothèque graphique.
-
-### 4.1 Alias `RGBA`
-
-```cpp
-using RGBA = std::tuple<unsigned char, unsigned char,
-    unsigned char, unsigned char>;
-```
-
-`RGBA` représente une couleur composée de quatre canaux :
-
-- rouge ;
-- vert ;
-- bleu ;
-- alpha.
-
-### 4.2 Interface `IEntity`
+## 4. Interface `IEntity`
 
 ```cpp
 class IEntity {
     public:
         virtual ~IEntity() = default;
 
-        virtual int getIdx() = 0;
-        virtual Vector2f getPos() = 0;
-        virtual Vector2f getSize() = 0;
-        virtual float getRotation() = 0;
-        virtual RGBA getColor() = 0;
-        virtual std::optional<std::string> getStr() = 0;
+        [[nodiscard]] virtual int getIdx() noexcept = 0;
+        [[nodiscard]] virtual Vector2f getPos() noexcept = 0;
+        [[nodiscard]] virtual Vector2f getSize() noexcept = 0;
+        [[nodiscard]] virtual float getRotation() noexcept = 0;
+        [[nodiscard]] virtual RGBA getColor() noexcept = 0;
+        [[nodiscard]] virtual std::optional<std::string> getStr() noexcept = 0;
 };
 ```
 
-#### Rôle
+### `getIdx()`
 
-Une `IEntity` fournit toutes les informations minimales nécessaires à l’affichage d’un objet.
+Index dans `Assets.first`. Inférieur à zéro si l'entité n'a pas d'asset graphique (entité logique invisible).
 
-#### Méthodes
+### `getPos()`
 
-##### `getIdx()`
-Retourne un entier identifiant l’asset à utiliser.
+Position en **pourcentage** de la surface de jeu (valeurs entre `0.0` et `1.0`). `{0.0, 0.0}` = coin haut-gauche, `{1.0, 1.0}` = coin bas-droit.
 
-##### `getPos()`
-Retourne la position de l’entité.
+### `getSize()`
 
-##### `getSize()`
-Retourne la taille de l’entité.
+Taille en **pourcentage** de la surface de jeu. Ex. `{0.025, 0.05}` pour une cellule dans une grille 40×20.
 
-##### `getRotation()`
-Retourne l’angle de rotation de l’entité.
+### `getRotation()`
 
-##### `getColor()`
-Retourne la couleur RGBA appliquée à l’entité.
+Angle de rotation en degrés (sens horaire). La rotation s'applique autour du **centre** de l'entité.
 
-##### `getStr()`
-Retourne éventuellement une chaîne.
+### `getColor()`
 
-### 4.3 Alias `Entities`
+Couleur RGBA : `std::tuple<uint8_t, uint8_t, uint8_t, uint8_t>`. Utilisée comme couleur de remplacement si aucun asset graphique n'est disponible.
 
-```cpp
-using Entities = std::vector<std::unique_ptr<arc::IEntity>>;
-```
+### `getStr()`
 
-`Entities` représente l’ensemble des entités à afficher pour un frame donné.
-
-Le choix de `std::unique_ptr<IEntity>` signifie que le propriétaire des entités est explicitement transféré ou déplacé, et que chaque entité est polymorphe.
+Chaîne optionnelle à afficher. Priorité d'affichage pour ncurses :
+1. contenu du fichier `.txt` associé à l'asset (première ligne)
+2. valeur de `getStr()` si présente
+3. caractère ASCII de fallback : `(char)(getIdx() + 33)`
 
 ---
 
-## 5. Documentation de `ISound.hpp`
-
-`ISound` représente une information sonore produite par le jeu.
-
-### 5.1 Interface `ISound`
+## 5. Interface `ISound`
 
 ```cpp
 class ISound {
     public:
         virtual ~ISound() = default;
 
-        virtual int getIdx() = 0;
-        virtual bool isLoop() = 0;
+        [[nodiscard]] virtual int getIdx() noexcept = 0;
+        [[nodiscard]] virtual bool isLoop() noexcept = 0;
 };
 ```
 
-#### Rôle
+### `getIdx()`
 
-Cette interface décrit un son à jouer ou à gérer côté affichage / moteur audio.
+Index dans `Assets.second`. Le module graphique joue le son correspondant.
 
-#### Méthodes
+### `isLoop()`
 
-##### `getIdx()`
-Retourne l’identifiant du son à utiliser.
-
-Par analogie avec `IEntity::getIdx()`, s’agit d’un index dans la liste des assets sonores.
-
-##### `isLoop()`
-Indique si le son doit être joué en boucle.
-
-### 5.2 Alias `Sounds`
-
-```cpp
-using Sounds = std::vector<std::unique_ptr<arc::ISound>>;
-```
-
-`Sounds` représente l’ensemble des événements sonores du tick courant.
+Si `true`, le son doit être joué en boucle tant qu'il apparaît dans la liste. S'il disparaît d'une frame à l'autre, le module graphique doit l'arrêter.
 
 ---
 
-## 6. Documentation de `IDisplayModule.hpp`
-
-`IDisplayModule` définit le contrat que doit respecter toute bibliothèque graphique.
+## 6. Interface `IDisplayModule`
 
 ```cpp
 class IDisplayModule {
     public:
         virtual ~IDisplayModule() = default;
 
-        virtual Event getEvent() = 0;
-        virtual int setAssets(Assets) = 0;
-        virtual void drawGame(std::reference_wrapper<
-            std::pair<Entities, Sounds>>) = 0;
+        [[nodiscard]] virtual Event getEvent() noexcept = 0;
+        [[nodiscard]] virtual int setAssets(const Assets) noexcept = 0;
+        virtual void drawGame(const std::pair<Entities, Sounds>) noexcept = 0;
 };
 ```
 
-### 6.1 Rôle général
+### `getEvent()`
 
-Un module graphique doit :
+Retourne le prochain événement utilisateur. Doit être non-bloquant (retourne `{Action::None, {0,0}}` si aucun événement).
 
-- récupérer les entrées utilisateur ;
-- charger ou préparer les assets transmis par le jeu ;
-- dessiner les entités et gérer les sons associés.
+### `setAssets(const Assets)`
 
-### 6.2 Méthodes
+Appelé par le core à chaque changement de jeu. Le module graphique doit charger les textures, sons et assets textuels correspondants. Retourne `0` en cas de succès, `-1` en cas d'erreur.
 
-#### `getEvent()`
-Retourne le prochain événement utilisateur sous forme de `Event`.
+### `drawGame(const std::pair<Entities, Sounds>)`
 
-Responsabilités :
-
-- lire le clavier ;
-- lire la souris ;
-- détecter la fermeture de fenêtre ;
-- convertir les événements natifs de la lib graphique vers le type commun `arc::Event`.
-
-#### `setAssets(Assets)`
-Permet au jeu de fournir les assets nécessaires au module graphique.
-
-#### `drawGame(std::reference_wrapper<std::pair<Entities, Sounds>>)`
-Dessine la frame courante du jeu à partir :
-
-- des entités à afficher ;
-- des sons à traiter.
-
-Implication pratique :
-
-- le renderer reçoit l’état visuel courant produit par le jeu ;
-- l’interface actuelle laisse possible une modification de ces structures par le module graphique.
+Dessine une frame. Appelé une fois par tick après `simulate()`. L'implémentation doit :
+1. effacer l'écran
+2. pour chaque entité : calculer `pos_pixel = pos_pct * taille_fenetre`, `size_pixel = size_pct * taille_fenetre`, afficher l'asset ou un fallback coloré
+3. gérer les sons (lancer, boucler, arrêter selon la liste `Sounds`)
+4. afficher le résultat
 
 ---
 
-## 7. Documentation de `IGameModule.hpp`
-
-`IGameModule` définit le contrat que doit respecter toute bibliothèque de jeu.
-
-### 7.1 Alias auxiliaires
-
-```cpp
-using SelectLibs = std::pair<std::optional<std::string>,
-    std::optional<std::string>>;
-using Libs = std::pair<std::vector<std::string>, std::vector<std::string>>;
-```
-
-#### `Libs`
-Représente la liste des bibliothèques disponibles.
-
-#### `SelectLibs`
-Représente une demande de changement de bibliothèque.
-
-Chaque `optional<string>` peut contenir :
-
-- le nom ou chemin d’une nouvelle bibliothèque graphique ;
-- le nom ou chemin d’un nouveau jeu ;
-- ou être vide si aucun changement n’est demandé.
-
-### 7.2 Interface `IGameModule`
+## 7. Interface `IGameModule`
 
 ```cpp
 class IGameModule {
     public:
         virtual ~IGameModule() = default;
 
-        virtual void simulate(Event) = 0;
-        virtual Assets getAssets() = 0;
-        virtual std::pair<Entities, Sounds> getElements() = 0;
-        virtual bool isOpen() = 0;
-        virtual SelectLibs libChanges(Libs) = 0;
+        virtual void simulate(const Event) noexcept = 0;
+        [[nodiscard]] virtual Assets getAssets() noexcept = 0;
+        [[nodiscard]] virtual std::pair<Entities, Sounds> getElements() noexcept = 0;
+        [[nodiscard]] virtual bool isOpen() noexcept = 0;
+        [[nodiscard]] virtual std::vector<Command> loadCommand() noexcept = 0;
 };
 ```
 
-### 7.3 Méthodes
+### `simulate(const Event)`
 
-#### `simulate(Event)`
-Fait avancer la logique du jeu d’un tick à partir d’un événement utilisateur.
+Avance la logique du jeu d'un tick. Reçoit l'événement utilisateur courant.
 
-Responsabilités :
+### `getAssets()`
 
-- interpréter l’entrée joueur ;
-- mettre à jour la simulation ;
-- générer un nouvel état de jeu.
+Retourne les assets nécessaires. Appelé par le core après le chargement du jeu pour transmettre les chemins au module graphique via `setAssets()`.
 
-#### `getAssets()`
-Retourne la liste des assets nécessaires au jeu.
+### `getElements()`
 
-Cette méthode permet au core ou au module graphique de connaître les ressources attendues.
+Retourne l'état visuel et sonore courant. Appelé chaque tick après `simulate()`.
 
-#### `getElements()`
-Retourne les entités et les sons à produire pour l’état courant.
+### `isOpen()`
 
-C’est la sortie principale du module de jeu vers le système de rendu.
+Retourne `false` quand le jeu est terminé. Le core appelle alors `restartGame()`.
 
-#### `isOpen()`
-Indique si le jeu est encore en cours d’exécution ou si le module souhaite continuer à fonctionner.
+### `loadCommand()`
 
-#### `libChanges(Libs)`
-Permet au jeu de signaler un changement de bibliothèque souhaité.
+Retourne la liste des commandes à exécuter par le core ce tick. Exemples :
+
+```cpp
+// Changer de lib graphique
+return {{{arc::Signal::LoadDisplay, {"./lib/arcade_sfml.so"}}}};
+
+// Quitter
+return {{{arc::Signal::Quit, {}}}};
+
+// Aucune commande (cas normal)
+return {};
+```
+
+---
+
+## 8. Créer une nouvelle bibliothèque graphique
+
+1. Créer un répertoire `plugins/MonDisplay/`
+2. Implémenter `MonDisplay.hpp` et `MonDisplay.cpp` avec la classe héritant de `arc::IDisplayModule`
+3. Exporter les entrypoints `makeInstance()` et `getLibType()` (retourne `arc::LibType::Display`)
+4. Ajouter à `CMakeLists.txt` :
+
+```cmake
+add_library(arcade_mondisplay SHARED
+    plugins/MonDisplay/MonDisplay.cpp
+)
+target_include_directories(arcade_mondisplay PRIVATE include)
+target_link_libraries(arcade_mondisplay PRIVATE <vos_libs>)
+set_target_properties(arcade_mondisplay PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+    PREFIX "")
+```
+
+5. Placer le `.so` dans `./lib/` — le core le détecte automatiquement
+
+**Règles de rendu :**
+- `pos` et `size` sont en pourcentage → multiplier par les dimensions de la fenêtre
+- La rotation est en degrés, autour du centre de l'entité
+- Fallback si pas d'asset : rectangle de couleur `getColor()` avec texte `getStr()` ou caractère ASCII
+
+---
+
+## 9. Créer un nouveau jeu
+
+1. Créer un répertoire `plugins/MonJeu/`
+2. Implémenter la classe héritant de `arc::IGameModule`
+3. Exporter les entrypoints `makeInstance()` et `getLibType()` (retourne `arc::LibType::Game`)
+4. Ajouter à `CMakeLists.txt` (même structure que ci-dessus)
+
+**Règles des entités :**
+- `getPos()` retourne des fractions de la surface de jeu (ex. cellule `(x, y)` dans une grille `W×H` → `{(float)x/W, (float)y/H}`)
+- `getSize()` retourne la taille d'une cellule en pourcentage (ex. `{1.0f/W, 1.0f/H}`)
+- `getIdx()` < 0 pour une entité invisible (non affichée)
+- `loadCommand()` retourne `{}` si aucune commande ce tick
+
+**Assets textuels (ncurses) :**
+Pour que ncurses affiche un caractère spécifique pour un asset, créer un fichier `<chemin_asset>.txt` contenant le caractère ou la chaîne sur la première ligne. Ex. pour `"assets/snake/head"`, créer `assets/snake/head.txt` avec `S`.
+
