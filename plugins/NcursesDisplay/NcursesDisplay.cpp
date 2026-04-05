@@ -42,6 +42,7 @@ arc::NcursesDisplay::NcursesDisplay()
     nodelay(stdscr, TRUE);
     curs_set(0);
     flushinp();
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, nullptr);
     if (has_colors()) {
         start_color();
         use_default_colors();
@@ -68,29 +69,57 @@ arc::Action arc::NcursesDisplay::mapKey(int key) const noexcept
     return Action::None;
 }
 
-arc::Event arc::NcursesDisplay::getEvent()
+arc::Action arc::NcursesDisplay::mapMouseButton(mmask_t bstate) const noexcept
+{
+    static const std::vector<std::pair<mmask_t, Action>> map = {
+        {BUTTON1_PRESSED, Action::LeftMouse},
+        {BUTTON2_PRESSED, Action::MiddleMouse},
+        {BUTTON3_PRESSED, Action::RightMouse},
+    };
+    auto it = std::find_if(map.begin(), map.end(),
+        [bstate](const auto &p) { return (bstate & p.first) != 0; });
+    return it != map.end() ? it->second : Action::None;
+}
+
+arc::Event arc::NcursesDisplay::getMouseEvent() noexcept
+{
+    MEVENT ev;
+    if (getmouse(&ev) != OK)
+        return {Action::None, {0.f, 0.f}};
+    return {mapMouseButton(ev.bstate),
+        {static_cast<float>(ev.x), static_cast<float>(ev.y)}};
+}
+
+arc::Event arc::NcursesDisplay::getEvent() noexcept
 {
     int key = getch();
     if (key == ERR) {
         napms(16);
         return {Action::None, {0.f, 0.f}};
     }
+    if (key == KEY_MOUSE)
+        return getMouseEvent();
     return {mapKey(key), {0.f, 0.f}};
 }
 
-int arc::NcursesDisplay::setAssets(Assets)
+int arc::NcursesDisplay::setAssets(const Assets assets) noexcept
 {
+    _assets = assets;
+    _maxGameX = 0;
+    _maxGameY = 0;
     return 0;
 }
 
 void arc::NcursesDisplay::drawEntity(
-    const std::unique_ptr<IEntity> &entity)
+    const std::unique_ptr<IEntity> &entity) const noexcept
 {
+    if (entity->getIdx() < 0)
+        return;
     auto [x, y] = entity->getPos();
     auto str = entity->getStr();
     auto color = entity->getColor();
-    int col = static_cast<int>(x);
-    int row = static_cast<int>(y);
+    int col = static_cast<int>(x) + 1;
+    int row = static_cast<int>(y) + 2;
     int pair = selectColorPair(color);
 
     attron(COLOR_PAIR(pair));
@@ -114,29 +143,50 @@ int arc::NcursesDisplay::selectColorPair(arc::RGBA color) const noexcept
     return 7;
 }
 
-void arc::NcursesDisplay::drawGame(
-    std::reference_wrapper<std::pair<Entities, Sounds>> data)
+void arc::NcursesDisplay::drawBorder() noexcept
 {
-    auto &[entities, sounds] = data.get();
+    int right = _maxGameX + 2;
+    int bot = _maxGameY + 3;
+    mvhline(1,   0,     ACS_HLINE, right + 1);
+    mvhline(bot, 0,     ACS_HLINE, right + 1);
+    mvvline(1,   0,     ACS_VLINE, bot - 1);
+    mvvline(1,   right, ACS_VLINE, bot - 1);
+    mvaddch(1,   0,     ACS_ULCORNER);
+    mvaddch(1,   right, ACS_URCORNER);
+    mvaddch(bot, 0,     ACS_LLCORNER);
+    mvaddch(bot, right, ACS_LRCORNER);
+}
+
+void arc::NcursesDisplay::drawGame(
+    const std::pair<Entities, Sounds> data) noexcept
+{
+    const auto &[entities, sounds] = data;
     clear();
-    for (const auto &entity : entities)
+    for (const auto &entity : entities) {
+        auto [x, y] = entity->getPos();
+        int gx = static_cast<int>(x);
+        int gy = static_cast<int>(y);
+        if (gx > _maxGameX)
+            _maxGameX = gx;
+        if (gy > _maxGameY)
+            _maxGameY = gy;
         drawEntity(entity);
-    mvprintw(0, 0, "[ncurses] F2 = SwapDisplay F3 = SwapGame F4 = Restart ESC = Quit");
+    }
+    if (_maxGameX > 0 || _maxGameY > 0)
+        drawBorder();
+    mvprintw(0, 0, "[ncurses] F2=SwapDisp F3=SwapGame F4=Restart ESC=Quit");
     refresh();
     (void)sounds;
 }
 
-extern "C" int getModuleType()
+extern "C"
 {
-    return 0;
-}
-
-extern "C" arc::IDisplayModule *createDisplayModule()
-{
-    return new arc::NcursesDisplay();
-}
-
-extern "C" void destroyDisplayModule(arc::IDisplayModule *module)
-{
-    delete module;
+    std::unique_ptr<arc::IDisplayModule> makeInstance()
+    {
+        return std::make_unique<arc::NcursesDisplay>();
+    }
+    arc::LibType getLibType()
+    {
+        return arc::LibType::Display;
+    }
 }

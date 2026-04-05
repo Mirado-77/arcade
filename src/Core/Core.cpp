@@ -43,12 +43,12 @@ void arc::Core::tryCategorizeLib(const std::string &path)
 {
     try {
         DLLoader loader(path);
-        auto getType = loader.getFunction<int()>("getModuleType");
+        auto getType = loader.getFunction<LibType()>("getLibType");
         auto norm = std::filesystem::weakly_canonical(path).string();
-        int type = getType();
-        if (type == 0)
+        LibType type = getType();
+        if (type == LibType::Display)
             _displayLibs.push_back(norm);
-        else if (type == 1)
+        else if (type == LibType::Game)
             _gameLibs.push_back(norm);
     } catch (...) {}
 }
@@ -57,22 +57,28 @@ void arc::Core::loadDisplay(const std::string &path)
 {
     _display.reset();
     _displayLoader = std::make_unique<DLLoader>(path);
-    auto getType = _displayLoader->getFunction<int()>("getModuleType");
-    if (getType() != 0)
+    auto getType = _displayLoader->getFunction<LibType()>("getLibType");
+    if (getType() != LibType::Display)
         throw std::runtime_error(path + ": not a graphical library");
-    _display = _displayLoader->loadPlugin<IDisplayModule>(
-        "createDisplayModule", "destroyDisplayModule");
+    auto makeInst = _displayLoader->getFunction<
+        std::unique_ptr<IDisplayModule>()>("makeInstance");
+    _display = makeInst();
+    if (!_display)
+        throw std::runtime_error("makeInstance: display factory returned nullptr");
 }
 
 void arc::Core::loadGame(const std::string &path)
 {
     _game.reset();
     _gameLoader = std::make_unique<DLLoader>(path);
-    auto getType = _gameLoader->getFunction<int()>("getModuleType");
-    if (getType() != 1)
+    auto getType = _gameLoader->getFunction<LibType()>("getLibType");
+    if (getType() != LibType::Game)
         throw std::runtime_error(path + ": not a game library");
-    _game = _gameLoader->loadPlugin<IGameModule>(
-        "createGameModule", "destroyGameModule");
+    auto makeInst = _gameLoader->getFunction<
+        std::unique_ptr<IGameModule>()>("makeInstance");
+    _game = makeInst();
+    if (!_game)
+        throw std::runtime_error("makeInstance: game factory returned nullptr");
     _display->setAssets(_game->getAssets());
 }
 
@@ -107,6 +113,28 @@ bool arc::Core::processEvent(const Event &event)
     return false;
 }
 
+bool arc::Core::processCommand(const Command &cmd)
+{
+    if (cmd.first == Signal::Quit)
+        return true;
+    if (cmd.first == Signal::LoadDisplay && !cmd.second.empty())
+        loadDisplay(cmd.second[0]);
+    if (cmd.first == Signal::LoadGame && !cmd.second.empty())
+        loadGame(cmd.second[0]);
+    if (cmd.first == Signal::RestartGame)
+        restartGame();
+    return false;
+}
+
+bool arc::Core::processCommands()
+{
+    for (const auto &cmd : _game->loadCommand()) {
+        if (processCommand(cmd))
+            return true;
+    }
+    return false;
+}
+
 void arc::Core::run()
 {
     while (true) {
@@ -116,7 +144,8 @@ void arc::Core::run()
         if (processEvent(event))
             break;
         _game->simulate(event);
-        auto elements = _game->getElements();
-        _display->drawGame(std::ref(elements));
+        if (processCommands())
+            break;
+        _display->drawGame(_game->getElements());
     }
 }

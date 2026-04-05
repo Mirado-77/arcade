@@ -8,11 +8,10 @@
 #ifndef IGAMEMODULE_HPP
     #define IGAMEMODULE_HPP
 
-#include <vector>
-#include <memory>
-#include "Arcade.hpp"
-#include "IEntity.hpp"
-#include "ISound.hpp"
+    #include <vector>
+    #include <memory>
+    #include "IEntity.hpp"
+    #include "ISound.hpp"
 
 namespace arc {
 
@@ -24,10 +23,11 @@ namespace arc {
         public:
             virtual ~IGameModule() = default;
 
-            virtual void simulate(Event) = 0;
-            virtual Assets getAssets() = 0;
-            virtual std::pair<Entities, Sounds> getElements() = 0;
-            virtual bool isOpen() = 0;
+            virtual void simulate(const Event) noexcept = 0;
+            [[nodiscard]] virtual Assets getAssets() noexcept = 0;
+            [[nodiscard]] virtual std::pair<Entities, Sounds> getElements() noexcept = 0;
+            [[nodiscard]] virtual bool isOpen() noexcept = 0;
+            [[nodiscard]] virtual std::vector<Command> loadCommand() noexcept = 0;
     };
 }
 
