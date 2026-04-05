@@ -1,14 +1,20 @@
 /*
 ** EPITECH PROJECT, 2026
-** Arcade
+** Utility
 ** File description:
-** Arcade
+** Utility
 */
 
-#ifndef ARCADE_HPP
-    #define ARCADE_HPP
+#ifndef UTILITY_HPP
+    #define UTILITY_HPP
 
-#include <utility>
+    #include <utility>
+    #include <vector>
+    #include <string>
+
+constexpr int SUCCESS = 0;
+constexpr int EPIERROR = 84;
+constexpr int ERROR = -1;
 
 namespace arc
 {
@@ -16,10 +22,17 @@ namespace arc
     using Assets = std::pair<std::vector<std::string>,
         std::vector<std::string>>;
 
+    enum class LibType
+    {
+        None,
+        Display,
+        Game,
+    };
+
     enum class Action
     {
-        None, //!< Unhandled key
-        A,        //!< The A key
+        None,         //!< Unhandled key
+        A,            //!< The A key
         B,            //!< The B key
         C,            //!< The C key
         D,            //!< The D key
@@ -131,6 +144,16 @@ namespace arc
     };
 
     using Event = std::pair<Action, Vector2f>;
+
+    enum class Signal {
+        LoadDisplay,
+        LoadGame,
+        RestartGame,
+        BackToMenu,
+        Quit,
+    };
+
+    using Command = std::pair<Signal, std::vector<std::string>>;
 }
 
 #endif

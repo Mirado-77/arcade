@@ -45,6 +45,8 @@ namespace arc {
             void nextGame();
             void restartGame();
             bool processEvent(const Event &event);
+            bool processCommand(const Command &cmd);
+            bool processCommands();
     };
 }
 

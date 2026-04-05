@@ -41,13 +41,18 @@ const std::unordered_map<int, arc::Action> arc::SfmlDisplay::KEY_MAP = {
     {sf::Keyboard::Num8, Action::Num8}, {sf::Keyboard::Num9, Action::Num9},
 };
 
+const std::unordered_map<sf::Mouse::Button, arc::Action> arc::SfmlDisplay::MOUSE_BUTTON_MAP = {
+    {sf::Mouse::Left, Action::LeftMouse},
+    {sf::Mouse::Right, Action::RightMouse},
+    {sf::Mouse::Middle, Action::MiddleMouse},
+};
+
 arc::SfmlDisplay::SfmlDisplay()
     : _window(sf::VideoMode(WIN_W, WIN_H), "Arcade"),
       _hasFont(false)
 {
     _window.setFramerateLimit(60);
 }
-// _hasFont = _font.loadFromFile(""); ill add it later, i just want to test the display for now
 
 arc::SfmlDisplay::~SfmlDisplay()
 {
@@ -64,7 +69,15 @@ arc::Action arc::SfmlDisplay::mapKey(int key) const noexcept
     return Action::None;
 }
 
-arc::Event arc::SfmlDisplay::getEvent()
+arc::Action arc::SfmlDisplay::mapMouseButton(sf::Mouse::Button btn) const noexcept
+{
+    auto it = MOUSE_BUTTON_MAP.find(btn);
+    if (it != MOUSE_BUTTON_MAP.end())
+        return it->second;
+    return Action::None;
+}
+
+arc::Event arc::SfmlDisplay::getEvent() noexcept
 {
     sf::Event ev;
 
@@ -73,12 +86,34 @@ arc::Event arc::SfmlDisplay::getEvent()
             return {Action::Close, {0.f, 0.f}};
         if (ev.type == sf::Event::KeyPressed)
             return {mapKey(static_cast<int>(ev.key.code)), {0.f, 0.f}};
+        if (ev.type == sf::Event::MouseButtonPressed) {
+            return {mapMouseButton(ev.mouseButton.button),
+                {static_cast<float>(ev.mouseButton.x),
+                    static_cast<float>(ev.mouseButton.y)}};
+        }
     }
     return {Action::None, {0.f, 0.f}};
 }
 
-int arc::SfmlDisplay::setAssets(Assets)
+int arc::SfmlDisplay::setAssets(const Assets assets) noexcept
 {
+    _textures.clear();
+    _sounds.clear();
+    _soundBuffers.clear();
+
+    for (const auto &path : assets.first) {
+        sf::Texture tex;
+        if (!tex.loadFromFile(path + ".png"))
+            tex.loadFromFile(path + ".jpg");
+        _textures.push_back(std::move(tex));
+    }
+
+    _soundBuffers.resize(assets.second.size());
+    _sounds.resize(assets.second.size());
+    for (std::size_t i = 0; i < assets.second.size(); ++i) {
+        if (_soundBuffers[i].loadFromFile(assets.second[i]))
+            _sounds[i].setBuffer(_soundBuffers[i]);
+    }
     return 0;
 }
 
@@ -88,13 +123,27 @@ sf::Color arc::SfmlDisplay::toColor(arc::RGBA rgba) const noexcept
     return sf::Color(r, g, b, a);
 }
 
-void arc::SfmlDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)
+void arc::SfmlDisplay::drawEntitySprite(
+    const std::unique_ptr<IEntity> &entity,
+    sf::Vector2f pos, sf::Vector2f size, int idx)
 {
-    auto [x, y] = entity->getPos();
-    sf::RectangleShape rect({CELL, CELL});
+    auto texIdx = static_cast<std::size_t>(idx);
+    auto texSize = _textures[texIdx].getSize();
+    sf::Sprite sprite(_textures[texIdx]);
+    sprite.setScale(size.x / texSize.x, size.y / texSize.y);
+    sprite.setPosition(pos);
+    sprite.setRotation(entity->getRotation());
+    _window.draw(sprite);
+}
 
-    rect.setPosition(x * CELL, static_cast<float>(HUD_H) + y * CELL);
+void arc::SfmlDisplay::drawEntityRect(
+    const std::unique_ptr<IEntity> &entity,
+    sf::Vector2f pos, sf::Vector2f size, int idx)
+{
+    sf::RectangleShape rect(size);
+    rect.setPosition(pos);
     rect.setFillColor(toColor(entity->getColor()));
+    rect.setRotation(entity->getRotation());
     _window.draw(rect);
     if (!_hasFont)
         return;
@@ -106,14 +155,34 @@ void arc::SfmlDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)
     if (str.has_value())
         text.setString(str.value());
     else
-        text.setString(std::string(1, static_cast<char>(entity->getIdx() + 33)));
-    text.setPosition(x * CELL + 2.f, static_cast<float>(HUD_H) + y * CELL + 1.f);
+        text.setString(std::string(1, static_cast<char>(idx + 33)));
+    text.setPosition(pos.x + 2.f, pos.y + 1.f);
     _window.draw(text);
+}
+
+void arc::SfmlDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)
+{
+    auto [x, y] = entity->getPos();
+    auto [sw, sh] = entity->getSize();
+    sf::Vector2f size(
+        (sw > 0.f ? sw : 1.f) * CELL, (sh > 0.f ? sh : 1.f) * CELL);
+    sf::Vector2f pos(
+        x * CELL, static_cast<float>(HUD_H) + y * CELL);
+    int idx = entity->getIdx();
+    bool hasTexture = idx >= 0
+        && idx < static_cast<int>(_textures.size())
+        && _textures[static_cast<std::size_t>(idx)].getSize().x > 0;
+    if (hasTexture)
+        drawEntitySprite(entity, pos, size, idx);
+    else
+        drawEntityRect(entity, pos, size, idx);
 }
 
 void arc::SfmlDisplay::drawHud()
 {
-    sf::RectangleShape bar({static_cast<float>(WIN_W), static_cast<float>(HUD_H)});
+    sf::Vector2f barSize(
+        static_cast<float>(WIN_W), static_cast<float>(HUD_H));
+    sf::RectangleShape bar(barSize);
     bar.setFillColor(sf::Color(50, 50, 50));
     _window.draw(bar);
     if (!_hasFont)
@@ -122,34 +191,53 @@ void arc::SfmlDisplay::drawHud()
     text.setFont(_font);
     text.setCharacterSize(12u);
     text.setFillColor(sf::Color::White);
-    text.setString("[SFML] F2 = SwapDisplay F3 = SwapGame F4 = Restart ESC = Quit");
+    text.setString(
+        "[SFML] F2 = SwapDisplay F3 = SwapGame F4 = Restart ESC = Quit");
     text.setPosition(5.f, 7.f);
     _window.draw(text);
 }
 
-void arc::SfmlDisplay::drawGame(
-    std::reference_wrapper<std::pair<Entities, Sounds>> data)
+void arc::SfmlDisplay::handleSounds(const Sounds &sounds)
 {
-    auto &[entities, sounds] = data.get();
+    std::vector<bool> requested(_sounds.size(), false);
+    for (const auto &s : sounds) {
+        int idx = s->getIdx();
+        if (idx < 0 || idx >= static_cast<int>(_sounds.size()))
+            continue;
+        auto &snd = _sounds[static_cast<std::size_t>(idx)];
+        requested[static_cast<std::size_t>(idx)] = true;
+        if (snd.getStatus() != sf::Sound::Playing) {
+            snd.setLoop(s->isLoop());
+            snd.play();
+        }
+    }
+    for (std::size_t i = 0; i < _sounds.size(); ++i) {
+        if (!requested[i] && _sounds[i].getLoop()
+            && _sounds[i].getStatus() == sf::Sound::Playing)
+            _sounds[i].stop();
+    }
+}
+
+void arc::SfmlDisplay::drawGame(
+    const std::pair<Entities, Sounds> data) noexcept
+{
+    const auto &[entities, sounds] = data;
     _window.clear(sf::Color::Black);
     drawHud();
     for (const auto &entity : entities)
         drawEntity(entity);
     _window.display();
-    (void)sounds;
+    handleSounds(sounds);
 }
 
-extern "C" int getModuleType()
+extern "C"
 {
-    return 0;
-}
-
-extern "C" arc::IDisplayModule *createDisplayModule()
-{
-    return new arc::SfmlDisplay();
-}
-
-extern "C" void destroyDisplayModule(arc::IDisplayModule *module)
-{
-    delete module;
+    std::unique_ptr<arc::IDisplayModule> makeInstance()
+    {
+        return std::make_unique<arc::SfmlDisplay>();
+    }
+    arc::LibType getLibType()
+    {
+        return arc::LibType::Display;
+    }
 }

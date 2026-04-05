@@ -28,21 +28,6 @@ namespace arc {
                 return reinterpret_cast<FuncPtr>(loadSymbol(name));
             }
 
-            template<typename T>
-            std::shared_ptr<T> loadPlugin(
-                const std::string &createSym,
-                const std::string &destroySym)
-            {
-                using Ptr = std::add_pointer_t<T>;
-                auto create = getFunction<Ptr()>(createSym);
-                auto destroy = getFunction<void(Ptr)>(destroySym);
-                auto plugin = std::shared_ptr<T>(create(), destroy);
-                if (!plugin) {
-                    throw std::runtime_error(createSym + ": factory returned nullptr");
-                }
-                return plugin;
-            }
-
             bool isLoaded() const noexcept;
 
         private:

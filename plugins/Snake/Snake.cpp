@@ -8,38 +8,7 @@
 #include <memory>
 #include <random>
 #include "Snake.hpp"
-
-namespace {
-    using Pos = std::pair<int, int>;
-
-    class SnakeEntity : public arc::IEntity {
-        public:
-            SnakeEntity(Pos pos, int idx, std::string str, arc::RGBA color)
-                : _pos(pos)
-                , _idx(idx)
-                , _str(std::move(str))
-                , _color(color)
-            {}
-            ~SnakeEntity() override = default;
-
-            int getIdx() override { return _idx; }
-            arc::Vector2f getPos() override
-            {
-                return {static_cast<float>(_pos.first),
-                        static_cast<float>(_pos.second)};
-            }
-            arc::Vector2f getSize() override { return {1.0f, 1.0f}; }
-            float getRotation() override { return 0.0f; }
-            arc::RGBA getColor() override { return _color; }
-            std::optional<std::string> getStr() override { return _str; }
-
-        private:
-            Pos _pos;
-            int _idx;
-            std::string _str;
-            arc::RGBA _color;
-    };
-}
+#include "SnakeEntity.hpp"
 
 arc::Snake::Snake()
     : _dir(Dir::Right)
@@ -117,7 +86,7 @@ bool arc::Snake::isOnBody(std::pair<int, int> pos) const noexcept
     return false;
 }
 
-void arc::Snake::simulate(arc::Event event)
+void arc::Snake::simulate(const arc::Event event) noexcept
 {
     updateDirection(event.first);
     _tick += 1;
@@ -127,12 +96,19 @@ void arc::Snake::simulate(arc::Event event)
     moveSnake();
 }
 
-arc::Assets arc::Snake::getAssets()
+// Images (without extension) indexed by IEntity::getIdx()
+// idx 0 = head, idx 1 = body, idx 2 = food
+// Sounds (.wav with extension) indexed by ISound::getIdx()
+
+arc::Assets arc::Snake::getAssets() noexcept
 {
-    return {{}, {}};
+    return {
+        {"assets/snake/head", "assets/snake/body", "assets/snake/food"},
+        {}
+    };
 }
 
-std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements()
+std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements() noexcept
 {
     arc::Entities entities;
     arc::Sounds sounds;
@@ -141,32 +117,38 @@ std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements()
     constexpr arc::RGBA foodColor = {255, 50, 50, 255};
 
     entities.push_back(
-        std::make_unique<SnakeEntity>(_body.front(), 0, "S", headColor));
+        std::make_unique<arc::SnakeEntity>(_body.front(), 0, "S", headColor));
     for (std::size_t i = 1; i < _body.size(); ++i) {
         entities.push_back(
-            std::make_unique<SnakeEntity>(_body[i], 1, "o", bodyColor));
+            std::make_unique<arc::SnakeEntity>(_body[i], 1, "o", bodyColor));
     }
     entities.push_back(
-        std::make_unique<SnakeEntity>(_food, 2, "*", foodColor));
+        std::make_unique<arc::SnakeEntity>(_food, 2, "*", foodColor));
+    entities.push_back(
+        std::make_unique<arc::SnakeEntity>(
+            std::make_pair(WIDTH - 1, HEIGHT - 1), -1, "",
+            arc::RGBA{0, 0, 0, 0}));
     return {std::move(entities), std::move(sounds)};
 }
 
-bool arc::Snake::isOpen()
+bool arc::Snake::isOpen() noexcept
 {
     return _open;
 }
 
-extern "C" arc::IGameModule *createGameModule()
+std::vector<arc::Command> arc::Snake::loadCommand() noexcept
 {
-    return new arc::Snake();
+    return {};
 }
 
-extern "C" void destroyGameModule(arc::IGameModule *module)
+extern "C"
 {
-    delete module;
-}
-
-extern "C" int getModuleType()
-{
-    return 1;
+    std::unique_ptr<arc::IGameModule> makeInstance()
+    {
+        return std::make_unique<arc::Snake>();
+    }
+    arc::LibType getLibType()
+    {
+        return arc::LibType::Game;
+    }
 }

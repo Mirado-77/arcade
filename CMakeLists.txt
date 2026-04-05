@@ -57,6 +57,7 @@ target_compile_options(arcade_sfml PRIVATE)
 
 add_library(arcade_snake SHARED
     plugins/Snake/Snake.cpp
+    plugins/Snake/SnakeEntity.cpp
 )
 set_target_properties(arcade_snake PROPERTIES PREFIX "")
 target_include_directories(arcade_snake PRIVATE include plugins/Snake)

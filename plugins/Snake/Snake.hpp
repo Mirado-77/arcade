@@ -8,10 +8,10 @@
 #ifndef SNAKE_HPP
     #define SNAKE_HPP
 
-#include <deque>
-#include <random>
-#include <utility>
-#include "IGameModule.hpp"
+    #include <deque>
+    #include <random>
+    #include <utility>
+    #include "IGameModule.hpp"
 
 namespace arc {
     class Snake : public IGameModule {
@@ -19,10 +19,11 @@ namespace arc {
             Snake();
             ~Snake() override = default;
 
-            void simulate(Event event) override;
-            Assets getAssets() override;
-            std::pair<Entities, Sounds> getElements() override;
-            bool isOpen() override;
+            void simulate(const Event event) noexcept override;
+            Assets getAssets() noexcept override;
+            std::pair<Entities, Sounds> getElements() noexcept override;
+            bool isOpen() noexcept override;
+            std::vector<Command> loadCommand() noexcept override;
 
         private:
             enum class Dir { Up, Down, Left, Right };
