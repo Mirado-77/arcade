@@ -80,14 +80,14 @@ void arc::Core::loadGame(const std::string &path)
     _game = makeInst();
     if (!_game)
         throw std::runtime_error("makeInstance: game factory returned nullptr");
-    _display->setAssets(_game->getAssets());
+    (void)_display->setAssets(_game->getAssets());
 }
 
 void arc::Core::nextDisplay()
 {
     _displayIdx = (_displayIdx + 1) % _displayLibs.size();
     loadDisplay(_displayLibs[_displayIdx]);
-    _display->setAssets(_game->getAssets());
+    (void)_display->setAssets(_game->getAssets());
 }
 
 void arc::Core::nextGame()
