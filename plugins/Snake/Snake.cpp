@@ -137,6 +137,10 @@ std::vector<arc::Command> arc::Snake::loadCommand() noexcept
     return {};
 }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
 extern "C"
 {
     std::unique_ptr<arc::IGameModule> makeInstance()
@@ -148,3 +152,6 @@ extern "C"
         return arc::LibType::Game;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

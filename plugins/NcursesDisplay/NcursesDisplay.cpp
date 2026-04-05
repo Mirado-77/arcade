@@ -175,6 +175,10 @@ void arc::NcursesDisplay::drawGame(
     (void)sounds;
 }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
 extern "C"
 {
     std::unique_ptr<arc::IDisplayModule> makeInstance()
@@ -186,3 +190,6 @@ extern "C"
         return arc::LibType::Display;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
