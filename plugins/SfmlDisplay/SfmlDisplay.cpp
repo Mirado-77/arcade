@@ -52,8 +52,6 @@ arc::SfmlDisplay::SfmlDisplay()
       _hasFont(false)
 {
     _window.setFramerateLimit(60);
-    _hasFont = _font.loadFromFile("assets/menu/font/SpaceMono-Regular.ttf")
-        || _font.loadFromFile("assets/fonts/font.ttf");
 }
 
 arc::SfmlDisplay::~SfmlDisplay()
