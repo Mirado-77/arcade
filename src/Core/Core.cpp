@@ -128,8 +128,10 @@ bool arc::Core::processCommand(const Command &cmd)
 {
     if (cmd.first == Signal::Quit)
         return true;
-    if (cmd.first == Signal::LoadDisplay && !cmd.second.empty())
+    if (cmd.first == Signal::LoadDisplay && !cmd.second.empty()) {
         loadDisplay(cmd.second[0]);
+        (void)_display->setAssets(_game->getAssets());
+    }
     if (cmd.first == Signal::LoadGame && !cmd.second.empty())
         loadGame(cmd.second[0]);
     if (cmd.first == Signal::RestartGame)
