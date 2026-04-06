@@ -5,12 +5,12 @@
 ** Menu
 */
 
-#include <dlfcn.h>
 #include <algorithm>
 #include <filesystem>
 #include <memory>
 #include "Menu.hpp"
 #include "MenuEntity.hpp"
+#include "Core/DLLoader.hpp"
 
 const arc::Menu::NavMap arc::Menu::LEFT_NAV = {
     {Focus::Displays, Focus::Username},
@@ -45,25 +45,23 @@ std::string arc::Menu::libFileName(const std::string &path)
 
 void arc::Menu::categorizeLib(const std::string &path)
 {
-    void *handle = dlopen(path.c_str(),
-        RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE
-    );
-
-    if (!handle)
-        return;
-    auto getType = reinterpret_cast<LibType(*)()>(dlsym(handle, "getLibType"));
-
-    if (getType && getType() == LibType::Game)
-        _gameLibs.push_back(path);
-    else if (getType && getType() == LibType::Display)
-        _displayLibs.push_back(path);
-    dlclose(handle);
+    try {
+        DLLoader loader(path);
+        auto getType =
+            loader.getFunction<LibType()>(
+                "getLibType");
+        LibType type = getType();
+        if (type == LibType::Game)
+            _gameLibs.push_back(path);
+        else if (type == LibType::Display)
+            _displayLibs.push_back(path);
+    } catch (...) {}
 }
 
 void arc::Menu::scanLibs()
 {
     auto exePath = std::filesystem::weakly_canonical("/proc/self/exe");
-    auto libDir =exePath.parent_path().parent_path() / "lib";
+    auto libDir = exePath.parent_path().parent_path() / "lib";
 
     if (!std::filesystem::is_directory(libDir))
         return;
@@ -231,7 +229,7 @@ void arc::Menu::buildColumnItem(Entities &entities, const ColumnConfig &col,
     
     if (isSelected)
         label += " *";
-    auto row = 6 + static_cast<int>(i);
+    auto row = LIST_START_ROW + static_cast<int>(i);
     entities.push_back(
         std::make_unique<MenuEntity>(
             std::pair{col.listX, row},
@@ -261,9 +259,6 @@ void arc::Menu::buildColumn(Entities &entities, const ColumnConfig &col,
 
 void arc::Menu::buildNameInput(Entities &entities) const
 {
-    constexpr RGBA cyan = {0, 200, 255, 255};
-    constexpr RGBA yellow = {255, 255, 0, 255};
-    constexpr RGBA white = {255, 255, 255, 255};
     bool focused = (_focus == Focus::Username);
     auto nameHeader = focused ? "[ Name ]" : "  Name  ";
 

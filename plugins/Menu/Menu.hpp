@@ -50,7 +50,13 @@ namespace arc {
             static constexpr int IDX_LOGO = 1;
             static constexpr int IDX_PLAY = 2;
             static constexpr int IDX_TEXT = 3;
+            static constexpr int LIST_START_ROW = 6;
             static constexpr std::string_view LIB_EXTENTION = ".so";
+
+
+            static constexpr RGBA cyan = {0, 200, 255, 255};    
+            static constexpr RGBA yellow = {255, 255, 0, 255};
+            static constexpr RGBA white = {255, 255, 255, 255};
 
             using NavMap = std::unordered_map<Focus, Focus>;
             static const NavMap LEFT_NAV;

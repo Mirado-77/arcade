@@ -69,6 +69,7 @@ target_compile_options(arcade_snake PRIVATE)
 add_library(arcade_menu SHARED
     plugins/Menu/Menu.cpp
     plugins/Menu/MenuEntity.cpp
+    src/Core/DLLoader.cpp
 )
 set_target_properties(arcade_menu PROPERTIES PREFIX "")
 target_include_directories(arcade_menu PRIVATE include plugins/Menu)
