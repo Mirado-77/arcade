@@ -9,6 +9,7 @@
     #define CORE_HPP
 
     #include <cstddef>
+    #include <filesystem>
     #include <memory>
     #include <string>
     #include <string_view>
@@ -29,9 +30,12 @@ namespace arc {
             ScoreManager &getScores() noexcept;
 
         private:
-            static constexpr std::string_view LIB_DIR = "./lib";
+            static std::filesystem::path execDir();
+            static constexpr std::string_view LIB_DIR = "lib";
+            static constexpr std::string_view MENU_LIB = "arcade_menu.so";
             static constexpr std::string_view SCORE_FILE = "scores.txt";
 
+            std::filesystem::path _root;
             ScoreManager _scores;
             std::vector<std::string> _displayLibs;
             std::vector<std::string> _gameLibs;
