@@ -11,14 +11,17 @@
 #include "Core/Core.hpp"
 
 arc::Core::Core(const std::string &displayPath)
-    : _scores(std::string(SCORE_FILE)),
+    : _root(execDir().parent_path()),
+      _scores((_root / SCORE_FILE).string()),
       _displayIdx(0), _gameIdx(0)
 {
     scanLibs();
     if (_displayLibs.empty())
-        throw std::runtime_error("no graphical library found in ./lib");
+        throw std::runtime_error(
+            "no graphical library found in " + (_root / LIB_DIR).string());
     if (_gameLibs.empty())
-        throw std::runtime_error("no game library found in ./lib");
+        throw std::runtime_error(
+            "no game library found in " + (_root / LIB_DIR).string());
 
     auto norm = std::filesystem::weakly_canonical(displayPath).string();
     auto it = std::find(_displayLibs.begin(), _displayLibs.end(), norm);
@@ -27,13 +30,20 @@ arc::Core::Core(const std::string &displayPath)
     _displayIdx = static_cast<std::size_t>(
         std::distance(_displayLibs.begin(), it));
     loadDisplay(_displayLibs[_displayIdx]);
-    loadGame(_gameLibs[_gameIdx]);
+    auto menuPath = std::filesystem::weakly_canonical(
+        _root / LIB_DIR / MENU_LIB).string();
+    loadGame(menuPath);
+}
+
+std::filesystem::path arc::Core::execDir()
+{
+    return std::filesystem::weakly_canonical("/proc/self/exe").parent_path();
 }
 
 void arc::Core::scanLibs()
 {
     for (const auto &entry :
-        std::filesystem::directory_iterator(std::string(LIB_DIR))) {
+        std::filesystem::directory_iterator((_root / LIB_DIR).string())) {
         if (entry.path().extension() != ".so")
             continue;
         tryCategorizeLib(entry.path().string());
@@ -124,6 +134,11 @@ bool arc::Core::processCommand(const Command &cmd)
         loadGame(cmd.second[0]);
     if (cmd.first == Signal::RestartGame)
         restartGame();
+    if (cmd.first == Signal::BackToMenu) {
+        auto menuPath = std::filesystem::weakly_canonical(
+            _root / LIB_DIR / MENU_LIB).string();
+        loadGame(menuPath);
+    }
     return false;
 }
 
@@ -136,6 +151,7 @@ bool arc::Core::processCommands()
     return false;
 }
 
+
 arc::ScoreManager &arc::Core::getScores() noexcept
 {
     return _scores;
@@ -144,8 +160,11 @@ arc::ScoreManager &arc::Core::getScores() noexcept
 void arc::Core::run()
 {
     while (true) {
-        if (!_game->isOpen())
-            restartGame();
+        if (!_game->isOpen()) {
+            auto menuPath = std::filesystem::weakly_canonical(
+                _root / LIB_DIR / MENU_LIB).string();
+            loadGame(menuPath);
+        }
         arc::Event event = _display->getEvent();
         if (processEvent(event))
             break;
