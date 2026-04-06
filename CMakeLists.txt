@@ -64,6 +64,17 @@ set_target_properties(arcade_snake PROPERTIES PREFIX "")
 target_include_directories(arcade_snake PRIVATE include plugins/Snake)
 target_compile_options(arcade_snake PRIVATE)
 
+# Menu plugin
+
+add_library(arcade_menu SHARED
+    plugins/Menu/Menu.cpp
+    plugins/Menu/MenuEntity.cpp
+)
+set_target_properties(arcade_menu PROPERTIES PREFIX "")
+target_include_directories(arcade_menu PRIVATE include plugins/Menu)
+target_link_libraries(arcade_menu PRIVATE dl)
+target_compile_options(arcade_menu PRIVATE)
+
 # Tests
 
 option(BUILD_TESTS "Build unit tests" OFF)
