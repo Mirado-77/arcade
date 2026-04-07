@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include "Core/Core.hpp"
+#include <iostream>
 
 arc::Core::Core(const std::string &displayPath)
     : _root(execDir().parent_path()),
@@ -108,7 +109,10 @@ void arc::Core::nextGame()
 
 void arc::Core::restartGame()
 {
-    loadGame(_gameLibs[_gameIdx]);
+    auto makeInst = _gameLoader->getFunction<
+        std::unique_ptr<IGameModule>()>("makeInstance");
+    _game = makeInst();
+    (void)_display->setAssets(_game->getAssets());
 }
 
 bool arc::Core::processEvent(const Event &event)
@@ -129,11 +133,22 @@ bool arc::Core::processCommand(const Command &cmd)
     if (cmd.first == Signal::Quit)
         return true;
     if (cmd.first == Signal::LoadDisplay && !cmd.second.empty()) {
+        auto it = std::find(_displayLibs.begin(), _displayLibs.end(),
+            cmd.second[0]);
+        if (it != _displayLibs.end())
+            _displayIdx = static_cast<std::size_t>(
+                it - _displayLibs.begin());
         loadDisplay(cmd.second[0]);
         (void)_display->setAssets(_game->getAssets());
     }
-    if (cmd.first == Signal::LoadGame && !cmd.second.empty())
+    if (cmd.first == Signal::LoadGame && !cmd.second.empty()) {
+        auto it = std::find(_gameLibs.begin(), _gameLibs.end(),
+            cmd.second[0]);
+        if (it != _gameLibs.end())
+            _gameIdx = static_cast<std::size_t>(
+                it - _gameLibs.begin());
         loadGame(cmd.second[0]);
+    }
     if (cmd.first == Signal::RestartGame)
         restartGame();
     if (cmd.first == Signal::BackToMenu) {
