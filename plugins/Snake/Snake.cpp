@@ -97,13 +97,75 @@ void arc::Snake::simulate(const arc::Event event) noexcept
 }
 
 // Images (without extension) indexed by IEntity::getIdx()
-// idx 0 = head, idx 1 = body, idx 2 = food
-// Sounds (.wav with extension) indexed by ISound::getIdx()
+// idx 0 = head, idx 1 = body, idx 2 = food, idx 3 = tail, idx 4 = turn
+// Head/tail sprite face Left at 0 deg.
+// Body sprite is horizontal at 0 deg.
+// Turn sprite connects Right and Down at 0 deg (corner at top-left).
+// All rotations are clockwise, in degrees.
+
+arc::Snake::Dir arc::Snake::dirBetween(
+    std::pair<int, int> from, std::pair<int, int> to) noexcept
+{
+    if (to.first > from.first) return Dir::Right;
+    if (to.first < from.first) return Dir::Left;
+    if (to.second > from.second) return Dir::Down;
+    return Dir::Up;
+}
+
+float arc::Snake::headRotation(arc::Snake::Dir dir) noexcept
+{
+    if (dir == Dir::Left) return 0.0f;
+    if (dir == Dir::Down) return 270.0f;
+    if (dir == Dir::Right) return 180.0f;
+    return 90.0f;
+}
+
+float arc::Snake::tailRotation(arc::Snake::Dir dirToBody) noexcept
+{
+    if (dirToBody == Dir::Left) return 0.0f;
+    if (dirToBody == Dir::Up) return 90.0f;
+    if (dirToBody == Dir::Right) return 180.0f;
+    return 270.0f;
+}
+
+float arc::Snake::bodyRotation(arc::Snake::Dir prevDir) noexcept
+{
+    if (prevDir == Dir::Left || prevDir == Dir::Right)
+        return 0.0f;
+    return 90.0f;
+}
+
+bool arc::Snake::isTurn(
+    arc::Snake::Dir dirToPrev, arc::Snake::Dir dirToNext) noexcept
+{
+    bool prevHoriz = (dirToPrev == Dir::Left || dirToPrev == Dir::Right);
+    bool nextHoriz = (dirToNext == Dir::Left || dirToNext == Dir::Right);
+    return prevHoriz != nextHoriz;
+}
+
+float arc::Snake::turnRotation(
+    arc::Snake::Dir dirToPrev, arc::Snake::Dir dirToNext) noexcept
+{
+    auto isSet = [&](Dir a, Dir b) noexcept {
+        return (dirToPrev == a && dirToNext == b)
+            || (dirToPrev == b && dirToNext == a);
+    };
+    if (isSet(Dir::Right, Dir::Down)) return 0.0f;
+    if (isSet(Dir::Down, Dir::Left)) return 90.0f;
+    if (isSet(Dir::Left, Dir::Up)) return 180.0f;
+    return 270.0f;
+}
 
 arc::Assets arc::Snake::getAssets() noexcept
 {
     return {
-        {"assets/snake/head", "assets/snake/body", "assets/snake/food"},
+        {
+            "assets/snake/head",
+            "assets/snake/body",
+            "assets/snake/food",
+            "assets/snake/tail",
+            "assets/snake/turn",
+        },
         {}
     };
 }
@@ -112,19 +174,56 @@ std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements() noexcept
 {
     arc::Entities entities;
     arc::Sounds sounds;
+
+    addHead(entities);
+    addBody(entities);
+    addTail(entities);
+    entities.push_back(std::make_unique<arc::SnakeEntity>(
+        _food, 2, "*", arc::RGBA{255, 50, 50, 255}, WIDTH, HEIGHT));
+    return {std::move(entities), std::move(sounds)};
+}
+
+void arc::Snake::addHead(arc::Entities &entities) const noexcept
+{
     constexpr arc::RGBA headColor = {0, 255, 0, 255};
-    constexpr arc::RGBA bodyColor = {0, 200, 0, 255};
-    constexpr arc::RGBA foodColor = {255, 50, 50, 255};
 
     entities.push_back(std::make_unique<arc::SnakeEntity>(
-        _body.front(), 0, "S", headColor, WIDTH, HEIGHT));
-    for (std::size_t i = 1; i < _body.size(); ++i) {
+        _body.front(), 0, "S", headColor, WIDTH, HEIGHT,
+        headRotation(_dir)));
+}
+
+void arc::Snake::addBody(arc::Entities &entities) const noexcept
+{
+    constexpr arc::RGBA bodyColor = {0, 200, 0, 255};
+
+    for (std::size_t i = 1; i + 1 < _body.size(); ++i) {
+        Dir dirToPrev = dirBetween(_body[i], _body[i - 1]);
+        Dir dirToNext = dirBetween(_body[i], _body[i + 1]);
+        int idx = 0;
+        float rot = 0.0f;
+        if (isTurn(dirToPrev, dirToNext)) {
+            idx = 4;
+            rot = turnRotation(dirToPrev, dirToNext);
+        } else {
+            idx = 1;
+            rot = bodyRotation(dirToPrev);
+        }
         entities.push_back(std::make_unique<arc::SnakeEntity>(
-            _body[i], 1, "o", bodyColor, WIDTH, HEIGHT));
+            _body[i], idx, "o", bodyColor, WIDTH, HEIGHT, rot));
     }
+}
+
+void arc::Snake::addTail(arc::Entities &entities) const noexcept
+{
+    constexpr arc::RGBA bodyColor = {0, 200, 0, 255};
+
+    if (_body.size() <= 1)
+        return;
+    std::size_t tailIdx = _body.size() - 1;
+    Dir dirToBody = dirBetween(_body[tailIdx], _body[tailIdx - 1]);
     entities.push_back(std::make_unique<arc::SnakeEntity>(
-        _food, 2, "*", foodColor, WIDTH, HEIGHT));
-    return {std::move(entities), std::move(sounds)};
+        _body.back(), 3, "o", bodyColor, WIDTH, HEIGHT,
+        tailRotation(dirToBody)));
 }
 
 bool arc::Snake::isOpen() noexcept

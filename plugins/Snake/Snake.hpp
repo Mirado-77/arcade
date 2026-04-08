@@ -46,6 +46,20 @@ namespace arc {
             void placeFood();
             bool checkCollision(std::pair<int, int> head) const noexcept;
             bool isOnBody(std::pair<int, int> pos) const noexcept;
+
+            static Dir dirBetween(
+                std::pair<int, int> from,
+                std::pair<int, int> to) noexcept;
+            static float headRotation(Dir dir) noexcept;
+            static float tailRotation(Dir dirToBody) noexcept;
+            static float bodyRotation(Dir prevDir) noexcept;
+            static bool isTurn(Dir dirToPrev, Dir dirToNext) noexcept;
+            static float turnRotation(
+                Dir dirToPrev, Dir dirToNext) noexcept;
+
+            void addHead(arc::Entities &entities) const noexcept;
+            void addBody(arc::Entities &entities) const noexcept;
+            void addTail(arc::Entities &entities) const noexcept;
     };
 }
 

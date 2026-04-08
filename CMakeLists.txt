@@ -64,6 +64,16 @@ set_target_properties(arcade_snake PROPERTIES PREFIX "")
 target_include_directories(arcade_snake PRIVATE include plugins/Snake)
 target_compile_options(arcade_snake PRIVATE)
 
+# Centipede plugin
+
+add_library(arcade_centipede SHARED
+    plugins/Centipede/Centipede.cpp
+    plugins/Centipede/CentipedeEntity.cpp
+)
+set_target_properties(arcade_centipede PROPERTIES PREFIX "")
+target_include_directories(arcade_centipede PRIVATE include plugins/Centipede)
+target_compile_options(arcade_centipede PRIVATE)
+
 # Menu plugin
 
 add_library(arcade_menu SHARED
