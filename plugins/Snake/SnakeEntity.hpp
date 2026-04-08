@@ -18,7 +18,7 @@ namespace arc {
         public:
             SnakeEntity(std::pair<int, int> pos, int idx,
                 std::string str, RGBA color,
-                int gridW, int gridH);
+                int gridW, int gridH, float rotation = 0.0f);
             ~SnakeEntity() override = default;
 
             int getIdx() noexcept override;
@@ -35,6 +35,7 @@ namespace arc {
             RGBA _color;
             int _gridW;
             int _gridH;
+            float _rotation;
     };
 }
 

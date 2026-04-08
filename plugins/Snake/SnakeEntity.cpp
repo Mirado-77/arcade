@@ -9,13 +9,14 @@
 
 arc::SnakeEntity::SnakeEntity(
     std::pair<int, int> pos, int idx, std::string str, RGBA color,
-    int gridW, int gridH)
+    int gridW, int gridH, float rotation)
     : _pos(pos)
     , _idx(idx)
     , _str(std::move(str))
     , _color(color)
     , _gridW(gridW)
     , _gridH(gridH)
+    , _rotation(rotation)
 {}
 
 int arc::SnakeEntity::getIdx() noexcept
@@ -41,7 +42,7 @@ arc::Vector2f arc::SnakeEntity::getSize() noexcept
 
 float arc::SnakeEntity::getRotation() noexcept
 {
-    return 0.0f;
+    return _rotation;
 }
 
 arc::RGBA arc::SnakeEntity::getColor() noexcept
