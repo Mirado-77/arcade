@@ -41,6 +41,7 @@ namespace arc {
 
             Action mapKey(int key) const noexcept;
             Action mapMouseButton(sf::Mouse::Button btn) const noexcept;
+            Event buildMouseEvent(const sf::Event &ev) const noexcept;
             sf::Color toColor(RGBA rgba) const noexcept;
             void drawEntitySprite(const std::unique_ptr<IEntity> &entity,
                 sf::Vector2f pos, sf::Vector2f size, int idx);
