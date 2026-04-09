@@ -54,6 +54,19 @@ target_include_directories(arcade_sfml PRIVATE include plugins/SfmlDisplay)
 target_link_libraries(arcade_sfml PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
 target_compile_options(arcade_sfml PRIVATE)
 
+# IrrlichtDisplay plugin
+
+find_library(IRRLICHT_LIB Irrlicht REQUIRED)
+
+add_library(arcade_irrlicht SHARED
+    plugins/IrrlichtDisplay/IrrlichtDisplay.cpp
+)
+set_target_properties(arcade_irrlicht PROPERTIES PREFIX "" CXX_STANDARD 17)
+target_include_directories(arcade_irrlicht PRIVATE include plugins/IrrlichtDisplay)
+target_include_directories(arcade_irrlicht SYSTEM PRIVATE /usr/include/irrlicht)
+target_link_libraries(arcade_irrlicht PRIVATE ${IRRLICHT_LIB})
+target_compile_options(arcade_irrlicht PRIVATE)
+
 # Snake plugin
 
 add_library(arcade_snake SHARED
