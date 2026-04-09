@@ -7,20 +7,9 @@
 
 #include "SfmlDisplay.hpp"
 #include "ISound.hpp"
+#include <algorithm>
 
 const std::unordered_map<int, arc::Action> arc::SfmlDisplay::KEY_MAP = {
-    {sf::Keyboard::Up, Action::Up},
-    {sf::Keyboard::Down, Action::Down},
-    {sf::Keyboard::Left, Action::Left},
-    {sf::Keyboard::Right, Action::Right},
-    {sf::Keyboard::Escape, Action::Escape},
-    {sf::Keyboard::F2, Action::F2},
-    {sf::Keyboard::F3, Action::F3},
-    {sf::Keyboard::F4, Action::F4},
-    {sf::Keyboard::F5, Action::F5},
-    {sf::Keyboard::Enter, Action::Enter},
-    {sf::Keyboard::Space, Action::Space},
-    {sf::Keyboard::Backspace, Action::Backspace},
     {sf::Keyboard::A, Action::A}, {sf::Keyboard::B, Action::B},
     {sf::Keyboard::C, Action::C}, {sf::Keyboard::D, Action::D},
     {sf::Keyboard::E, Action::E}, {sf::Keyboard::F, Action::F},
@@ -34,11 +23,73 @@ const std::unordered_map<int, arc::Action> arc::SfmlDisplay::KEY_MAP = {
     {sf::Keyboard::U, Action::U}, {sf::Keyboard::V, Action::V},
     {sf::Keyboard::W, Action::W}, {sf::Keyboard::X, Action::X},
     {sf::Keyboard::Y, Action::Y}, {sf::Keyboard::Z, Action::Z},
+    
     {sf::Keyboard::Num0, Action::Num0}, {sf::Keyboard::Num1, Action::Num1},
     {sf::Keyboard::Num2, Action::Num2}, {sf::Keyboard::Num3, Action::Num3},
     {sf::Keyboard::Num4, Action::Num4}, {sf::Keyboard::Num5, Action::Num5},
     {sf::Keyboard::Num6, Action::Num6}, {sf::Keyboard::Num7, Action::Num7},
     {sf::Keyboard::Num8, Action::Num8}, {sf::Keyboard::Num9, Action::Num9},
+
+    {sf::Keyboard::Up, Action::Up}, {sf::Keyboard::Down, Action::Down},
+    {sf::Keyboard::Left, Action::Left}, {sf::Keyboard::Right, Action::Right},
+
+    {sf::Keyboard::Escape, Action::Escape},
+    {sf::Keyboard::Enter, Action::Enter},
+    {sf::Keyboard::Space, Action::Space},
+    {sf::Keyboard::Backspace, Action::Backspace},
+    {sf::Keyboard::Tab, Action::Tab},
+    {sf::Keyboard::Delete, Action::Delete},
+    {sf::Keyboard::Insert, Action::Insert},
+    {sf::Keyboard::Home, Action::Home},
+    {sf::Keyboard::End, Action::End},
+    {sf::Keyboard::PageUp, Action::PageUp},
+    {sf::Keyboard::PageDown, Action::PageDown},
+    {sf::Keyboard::Pause, Action::Pause},
+
+    {sf::Keyboard::F1, Action::F1}, {sf::Keyboard::F2, Action::F2},
+    {sf::Keyboard::F3, Action::F3}, {sf::Keyboard::F4, Action::F4},
+    {sf::Keyboard::F5, Action::F5}, {sf::Keyboard::F6, Action::F6},
+    {sf::Keyboard::F7, Action::F7}, {sf::Keyboard::F8, Action::F8},
+    {sf::Keyboard::F9, Action::F9}, {sf::Keyboard::F10, Action::F10},
+    {sf::Keyboard::F11, Action::F11}, {sf::Keyboard::F12, Action::F12},
+    {sf::Keyboard::F13, Action::F13}, {sf::Keyboard::F14, Action::F14},
+    {sf::Keyboard::F15, Action::F15},
+
+    {sf::Keyboard::LControl, Action::LControl},
+    {sf::Keyboard::LShift, Action::LShift},
+    {sf::Keyboard::LAlt, Action::LAlt},
+    {sf::Keyboard::LSystem, Action::LSystem},
+    {sf::Keyboard::RControl, Action::RControl},
+    {sf::Keyboard::RShift, Action::RShift},
+    {sf::Keyboard::RAlt, Action::RAlt},
+    {sf::Keyboard::RSystem, Action::RSystem},
+
+    {sf::Keyboard::LBracket, Action::LBracket},
+    {sf::Keyboard::RBracket, Action::RBracket},
+    {sf::Keyboard::Semicolon, Action::Semicolon},
+    {sf::Keyboard::Comma, Action::Comma},
+    {sf::Keyboard::Period, Action::Period},
+    {sf::Keyboard::Quote, Action::Apostrophe},
+    {sf::Keyboard::Slash, Action::Slash},
+    {sf::Keyboard::Backslash, Action::Backslash},
+    {sf::Keyboard::Tilde, Action::Grave},
+    {sf::Keyboard::Equal, Action::Equal},
+    {sf::Keyboard::Hyphen, Action::Hyphen},
+
+    {sf::Keyboard::Numpad0, Action::Numpad0},
+    {sf::Keyboard::Numpad1, Action::Numpad1},
+    {sf::Keyboard::Numpad2, Action::Numpad2},
+    {sf::Keyboard::Numpad3, Action::Numpad3},
+    {sf::Keyboard::Numpad4, Action::Numpad4},
+    {sf::Keyboard::Numpad5, Action::Numpad5},
+    {sf::Keyboard::Numpad6, Action::Numpad6},
+    {sf::Keyboard::Numpad7, Action::Numpad7},
+    {sf::Keyboard::Numpad8, Action::Numpad8},
+    {sf::Keyboard::Numpad9, Action::Numpad9},
+    {sf::Keyboard::Add, Action::Add},
+    {sf::Keyboard::Subtract, Action::Subtract},
+    {sf::Keyboard::Multiply, Action::Multiply},
+    {sf::Keyboard::Divide, Action::Divide},
 };
 
 const std::unordered_map<sf::Mouse::Button, arc::Action> arc::SfmlDisplay::MOUSE_BUTTON_MAP = {
@@ -79,6 +130,16 @@ arc::Action arc::SfmlDisplay::mapMouseButton(sf::Mouse::Button btn) const noexce
     return Action::None;
 }
 
+arc::Event arc::SfmlDisplay::buildMouseEvent(const sf::Event &ev) const noexcept
+{
+    float mx = static_cast<float>(ev.mouseButton.x) / static_cast<float>(WIN_W);
+    float my = (static_cast<float>(ev.mouseButton.y) - static_cast<float>(HUD_H))
+        / static_cast<float>(WIN_H - HUD_H);
+    mx = std::max(0.f, std::min(1.f, mx));
+    my = std::max(0.f, std::min(1.f, my));
+    return {mapMouseButton(ev.mouseButton.button), {mx, my}};
+}
+
 arc::Event arc::SfmlDisplay::getEvent() noexcept
 {
     sf::Event ev;
@@ -88,11 +149,8 @@ arc::Event arc::SfmlDisplay::getEvent() noexcept
             return {Action::Close, {0.f, 0.f}};
         if (ev.type == sf::Event::KeyPressed)
             return {mapKey(static_cast<int>(ev.key.code)), {0.f, 0.f}};
-        if (ev.type == sf::Event::MouseButtonPressed) {
-            return {mapMouseButton(ev.mouseButton.button),
-                {static_cast<float>(ev.mouseButton.x),
-                    static_cast<float>(ev.mouseButton.y)}};
-        }
+        if (ev.type == sf::Event::MouseButtonPressed)
+            return buildMouseEvent(ev);
     }
     return {Action::None, {0.f, 0.f}};
 }
@@ -136,6 +194,7 @@ void arc::SfmlDisplay::drawEntitySprite(
     sprite.setOrigin(texSize.x / 2.f, texSize.y / 2.f);
     sprite.setPosition(pos.x + size.x / 2.f, pos.y + size.y / 2.f);
     sprite.setRotation(entity->getRotation());
+    sprite.setColor(toColor(entity->getColor()));
     _window.draw(sprite);
 }
 
@@ -143,25 +202,40 @@ void arc::SfmlDisplay::drawEntityRect(
     const std::unique_ptr<IEntity> &entity,
     sf::Vector2f pos, sf::Vector2f size, int idx)
 {
-    sf::RectangleShape rect(size);
-    rect.setOrigin(size.x / 2.f, size.y / 2.f);
-    rect.setPosition(pos.x + size.x / 2.f, pos.y + size.y / 2.f);
-    rect.setFillColor(toColor(entity->getColor()));
-    rect.setRotation(entity->getRotation());
-    _window.draw(rect);
-    if (!_hasFont)
-        return;
-    sf::Text text;
-    text.setFont(_font);
-    text.setCharacterSize(14u);
-    text.setFillColor(sf::Color::Black);
+    auto color = toColor(entity->getColor());
     auto str = entity->getStr();
-    if (str.has_value())
+    bool hasText = str.has_value() && !str.value().empty();
+
+    if (hasText && idx < 0) {
+        if (!_hasFont)
+            return;
+        sf::Text text;
+        text.setFont(_font);
+        text.setCharacterSize(14u);
+        text.setFillColor(color);
         text.setString(str.value());
-    else
-        text.setString(std::string(1, static_cast<char>(idx + 33)));
-    text.setPosition(pos.x + 2.f, pos.y + 1.f);
-    _window.draw(text);
+        text.setPosition(pos.x + 2.f, pos.y + 1.f);
+        _window.draw(text);
+    } else {
+        sf::RectangleShape rect(size);
+        rect.setOrigin(size.x / 2.f, size.y / 2.f);
+        rect.setPosition(pos.x + size.x / 2.f, pos.y + size.y / 2.f);
+        rect.setFillColor(color);
+        rect.setRotation(entity->getRotation());
+        _window.draw(rect);
+        if (!_hasFont)
+            return;
+        sf::Text text;
+        text.setFont(_font);
+        text.setCharacterSize(14u);
+        text.setFillColor(sf::Color::Black);
+        if (hasText)
+            text.setString(str.value());
+        else if (idx >= 0)
+            text.setString(std::string(1, static_cast<char>(idx + 33)));
+        text.setPosition(pos.x + 2.f, pos.y + 1.f);
+        _window.draw(text);
+    }
 }
 
 void arc::SfmlDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)

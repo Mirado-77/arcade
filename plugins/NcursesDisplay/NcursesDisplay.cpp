@@ -11,18 +11,27 @@
 #include <fstream>
 
 const std::unordered_map<int, arc::Action> arc::NcursesDisplay::KEY_MAP = {
-    {KEY_UP, Action::Up},
-    {KEY_DOWN, Action::Down},
-    {KEY_LEFT, Action::Left},
-    {KEY_RIGHT, Action::Right},
+    {KEY_UP, Action::Up}, {KEY_DOWN, Action::Down},
+    {KEY_LEFT, Action::Left}, {KEY_RIGHT, Action::Right},
     {27, Action::Escape},
-    {KEY_F(2), Action::F2},
-    {KEY_F(3), Action::F3},
-    {KEY_F(4), Action::F4},
-    {KEY_F(5), Action::F5},
     {KEY_BACKSPACE, Action::Backspace},
+    {127, Action::Backspace},
     {'\n', Action::Enter},
+    {'\r', Action::Enter},
     {' ', Action::Space},
+    {'\t', Action::Tab},
+    {KEY_DC, Action::Delete},
+    {KEY_IC, Action::Insert},
+    {KEY_HOME, Action::Home},
+    {KEY_END, Action::End},
+    {KEY_PPAGE, Action::PageUp},
+    {KEY_NPAGE, Action::PageDown},
+    {KEY_F(1), Action::F1}, {KEY_F(2), Action::F2},
+    {KEY_F(3), Action::F3}, {KEY_F(4), Action::F4},
+    {KEY_F(5), Action::F5}, {KEY_F(6), Action::F6},
+    {KEY_F(7), Action::F7}, {KEY_F(8), Action::F8},
+    {KEY_F(9), Action::F9}, {KEY_F(10), Action::F10},
+    {KEY_F(11), Action::F11}, {KEY_F(12), Action::F12},
     {'a', Action::A}, {'b', Action::B}, {'c', Action::C},
     {'d', Action::D}, {'e', Action::E}, {'f', Action::F},
     {'g', Action::G}, {'h', Action::H}, {'i', Action::I},
@@ -32,6 +41,19 @@ const std::unordered_map<int, arc::Action> arc::NcursesDisplay::KEY_MAP = {
     {'s', Action::S}, {'t', Action::T}, {'u', Action::U},
     {'v', Action::V}, {'w', Action::W}, {'x', Action::X},
     {'y', Action::Y}, {'z', Action::Z},
+    {'A', Action::A}, {'B', Action::B}, {'C', Action::C},
+    {'D', Action::D}, {'E', Action::E}, {'F', Action::F},
+    {'G', Action::G}, {'H', Action::H}, {'I', Action::I},
+    {'J', Action::J}, {'K', Action::K}, {'L', Action::L},
+    {'M', Action::M}, {'N', Action::N}, {'O', Action::O},
+    {'P', Action::P}, {'Q', Action::Q}, {'R', Action::R},
+    {'S', Action::S}, {'T', Action::T}, {'U', Action::U},
+    {'V', Action::V}, {'W', Action::W}, {'X', Action::X},
+    {'Y', Action::Y}, {'Z', Action::Z},
+    {'0', Action::Num0}, {'1', Action::Num1}, {'2', Action::Num2},
+    {'3', Action::Num3}, {'4', Action::Num4}, {'5', Action::Num5},
+    {'6', Action::Num6}, {'7', Action::Num7}, {'8', Action::Num8},
+    {'9', Action::Num9},
 };
 
 arc::NcursesDisplay::NcursesDisplay()
@@ -87,8 +109,13 @@ arc::Event arc::NcursesDisplay::getMouseEvent() noexcept
     MEVENT ev;
     if (getmouse(&ev) != OK)
         return {Action::None, {0.f, 0.f}};
-    return {mapMouseButton(ev.bstate),
-        {static_cast<float>(ev.x), static_cast<float>(ev.y)}};
+    float mx = (COLS > 0) ? static_cast<float>(ev.x) / static_cast<float>(COLS) : 0.f;
+    float my = (LINES > 2) ? static_cast<float>(ev.y - 1) / static_cast<float>(LINES - 2) : 0.f;
+    if (mx < 0.f) mx = 0.f;
+    if (mx > 1.f) mx = 1.f;
+    if (my < 0.f) my = 0.f;
+    if (my > 1.f) my = 1.f;
+    return {mapMouseButton(ev.bstate), {mx, my}};
 }
 
 arc::Event arc::NcursesDisplay::getEvent() noexcept
@@ -134,20 +161,32 @@ std::string arc::NcursesDisplay::getDisplayStr(
 void arc::NcursesDisplay::drawEntity(
     const std::unique_ptr<IEntity> &entity) const noexcept
 {
-    if (entity->getIdx() < 0)
-        return;
     auto [px, py] = entity->getPos();
     auto color = entity->getColor();
     int col = static_cast<int>(px * static_cast<float>(COLS));
     int row = 1 + static_cast<int>(py * static_cast<float>(LINES - 2));
     int pair = selectColorPair(color);
-    std::string s = getDisplayStr(entity);
+    int idx = entity->getIdx();
 
     if (col < 0 || row < 1 || col >= COLS || row >= LINES)
         return;
-    attron(COLOR_PAIR(pair));
-    mvprintw(row, col, "%s", s.c_str());
-    attroff(COLOR_PAIR(pair));
+    if (idx >= 0) {
+        std::string s = getDisplayStr(entity);
+        attron(COLOR_PAIR(pair));
+        mvprintw(row, col, "%s", s.c_str());
+        attroff(COLOR_PAIR(pair));
+    } else {
+        auto str = entity->getStr();
+        if (str.has_value() && !str.value().empty()) {
+            attron(COLOR_PAIR(pair));
+            mvprintw(row, col, "%s", str.value().c_str());
+            attroff(COLOR_PAIR(pair));
+        } else {
+            attron(COLOR_PAIR(pair) | A_REVERSE);
+            mvprintw(row, col, " ");
+            attroff(COLOR_PAIR(pair) | A_REVERSE);
+        }
+    }
 }
 
 int arc::NcursesDisplay::selectColorPair(arc::RGBA color) const noexcept
