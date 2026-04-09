@@ -60,6 +60,7 @@ namespace arc {
             void addHead(arc::Entities &entities) const noexcept;
             void addBody(arc::Entities &entities) const noexcept;
             void addTail(arc::Entities &entities) const noexcept;
+            int getScore() const;
     };
 }
 

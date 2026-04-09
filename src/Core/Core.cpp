@@ -128,34 +128,58 @@ bool arc::Core::processEvent(const Event &event)
     return false;
 }
 
+void arc::Core::handleLoadDisplay(const Command &cmd)
+{
+    auto it = std::find(_displayLibs.begin(), _displayLibs.end(), cmd.second[0]);
+    if (it != _displayLibs.end())
+        _displayIdx = static_cast<std::size_t>(it - _displayLibs.begin());
+    loadDisplay(cmd.second[0]);
+    (void)_display->setAssets(_game->getAssets());
+}
+
+void arc::Core::handleLoadGame(const Command &cmd)
+{
+    auto it = std::find(_gameLibs.begin(), _gameLibs.end(), cmd.second[0]);
+    if (it != _gameLibs.end())
+        _gameIdx = static_cast<std::size_t>(it - _gameLibs.begin());
+    loadGame(cmd.second[0]);
+}
+
+void arc::Core::handleBackToMenu()
+{
+    auto menuPath = std::filesystem::weakly_canonical(
+        _root / LIB_DIR / MENU_LIB).string();
+    loadGame(menuPath);
+}
+
+void arc::Core::handleLoadScore(const Command &cmd)
+{
+    if (_currentPlayer.empty())
+        return;
+    auto gameName = std::filesystem::path(_gameLibs[_gameIdx]).stem().string();
+    _scores.addScore(gameName, _currentPlayer, std::stoi(cmd.second[0]));
+}
+
 bool arc::Core::processCommand(const Command &cmd)
 {
     if (cmd.first == Signal::Quit)
         return true;
-    if (cmd.first == Signal::LoadDisplay && !cmd.second.empty()) {
-        auto it = std::find(_displayLibs.begin(), _displayLibs.end(),
-            cmd.second[0]);
-        if (it != _displayLibs.end())
-            _displayIdx = static_cast<std::size_t>(
-                it - _displayLibs.begin());
-        loadDisplay(cmd.second[0]);
-        (void)_display->setAssets(_game->getAssets());
-    }
-    if (cmd.first == Signal::LoadGame && !cmd.second.empty()) {
-        auto it = std::find(_gameLibs.begin(), _gameLibs.end(),
-            cmd.second[0]);
-        if (it != _gameLibs.end())
-            _gameIdx = static_cast<std::size_t>(
-                it - _gameLibs.begin());
-        loadGame(cmd.second[0]);
-    }
+
+    const bool hasArgs = !cmd.second.empty();
+
+    if (cmd.first == Signal::LoadDisplay && hasArgs)
+        handleLoadDisplay(cmd);
+    if (cmd.first == Signal::LoadGame && hasArgs)
+        handleLoadGame(cmd);
     if (cmd.first == Signal::RestartGame)
         restartGame();
-    if (cmd.first == Signal::BackToMenu) {
-        auto menuPath = std::filesystem::weakly_canonical(
-            _root / LIB_DIR / MENU_LIB).string();
-        loadGame(menuPath);
-    }
+    if (cmd.first == Signal::BackToMenu)
+        handleBackToMenu();
+    if (cmd.first == Signal::LoadUser && hasArgs)
+        _currentPlayer = cmd.second[0];
+    if (cmd.first == Signal::LoadScore && hasArgs)
+        handleLoadScore(cmd);
+
     return false;
 }
 
@@ -167,7 +191,6 @@ bool arc::Core::processCommands()
     }
     return false;
 }
-
 
 arc::ScoreManager &arc::Core::getScores() noexcept
 {

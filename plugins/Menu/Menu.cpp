@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <memory>
+#include <sstream>
 #include "Menu.hpp"
 #include "MenuEntity.hpp"
 #include "Core/DLLoader.hpp"
@@ -26,24 +28,33 @@ const arc::Menu::NavMap arc::Menu::RIGHT_NAV = {
     {Focus::Displays, Focus::Games},
 };
 
-arc::Menu::Menu(): _gameCursor(0), _displayCursor(0), _gameSelected(0),
-    _displaySelected(0), _focus(Focus::Games), _open(true)
+arc::Menu::Menu()
+    : _gameCursor(0)
+    , _displayCursor(0)
+    , _gameSelected(0)
+    , _displaySelected(0)
+    , _focus(Focus::Games)
+    , _open(true)
 {
     scanLibs();
+    loadScores();
 }
 
-std::size_t arc::Menu::wrapDecrement(std::size_t idx,
-    std::size_t size) noexcept
+std::size_t arc::Menu::wrapDecrement(
+    std::size_t idx, std::size_t size) noexcept
 {
     return (idx == 0) ? size - 1 : idx - 1;
 }
 
-std::string arc::Menu::libFileName(const std::string &path)
+std::string arc::Menu::libFileName(
+    const std::string &path)
 {
-    return std::filesystem::path(path).filename().string();
+    return std::filesystem::path(path)
+        .filename().string();
 }
 
-void arc::Menu::categorizeLib(const std::string &path)
+void arc::Menu::categorizeLib(
+    const std::string &path)
 {
     try {
         DLLoader loader(path);
@@ -60,21 +71,29 @@ void arc::Menu::categorizeLib(const std::string &path)
 
 void arc::Menu::scanLibs()
 {
-    auto exePath = std::filesystem::weakly_canonical("/proc/self/exe");
-    auto libDir = exePath.parent_path().parent_path() / "lib";
+    auto exePath =
+        std::filesystem::weakly_canonical(
+            "/proc/self/exe");
+    auto libDir =
+        exePath.parent_path().parent_path() / "lib";
 
     if (!std::filesystem::is_directory(libDir))
         return;
-    for (const auto &entry : std::filesystem::directory_iterator(libDir)) {
-        if (entry.path().extension() != std::string(LIB_EXTENTION))
+    for (const auto &entry :
+        std::filesystem::directory_iterator(libDir))
+    {
+        if (entry.path().extension()
+            != std::string(LIB_EXTENSION))
             continue;
-        auto norm = std::filesystem::weakly_canonical(entry.path()).string();
-
+        auto norm =
+            std::filesystem::weakly_canonical(
+                entry.path()).string();
         if (libFileName(norm) != "arcade_menu.so")
             categorizeLib(norm);
     }
     std::sort(_gameLibs.begin(), _gameLibs.end());
-    std::sort(_displayLibs.begin(), _displayLibs.end());
+    std::sort(
+        _displayLibs.begin(), _displayLibs.end());
 }
 
 void arc::Menu::moveCursorUp() noexcept
@@ -85,11 +104,13 @@ void arc::Menu::moveCursorUp() noexcept
         break;
     case Focus::Games:
         if (!_gameLibs.empty())
-            _gameCursor = wrapDecrement(_gameCursor, _gameLibs.size());
+            _gameCursor = wrapDecrement(
+                _gameCursor, _gameLibs.size());
         break;
     case Focus::Displays:
         if (!_displayLibs.empty())
-            _displayCursor = wrapDecrement(_displayCursor,
+            _displayCursor = wrapDecrement(
+                _displayCursor,
                 _displayLibs.size());
         break;
     default:
@@ -105,18 +126,23 @@ void arc::Menu::moveCursorDown() noexcept
         break;
     case Focus::Games:
         if (!_gameLibs.empty())
-            _gameCursor = (_gameCursor + 1) % _gameLibs.size();
+            _gameCursor =
+                (_gameCursor + 1)
+                % _gameLibs.size();
         break;
     case Focus::Displays:
         if (!_displayLibs.empty())
-            _displayCursor = (_displayCursor + 1) % _displayLibs.size();
+            _displayCursor =
+                (_displayCursor + 1)
+                % _displayLibs.size();
         break;
     default:
         break;
     }
 }
 
-void arc::Menu::handleVerticalNav(Action action) noexcept
+void arc::Menu::handleVerticalNav(
+    Action action) noexcept
 {
     if (action == Action::Up)
         moveCursorUp();
@@ -124,12 +150,15 @@ void arc::Menu::handleVerticalNav(Action action) noexcept
         moveCursorDown();
 }
 
-void arc::Menu::handleHorizontalNav(Action action) noexcept
+void arc::Menu::handleHorizontalNav(
+    Action action) noexcept
 {
-    if (action != Action::Left && action != Action::Right)
+    if (action != Action::Left
+        && action != Action::Right)
         return;
-    
-    const auto &nav = (action == Action::Left) ? LEFT_NAV : RIGHT_NAV;
+    const auto &nav =
+        (action == Action::Left)
+        ? LEFT_NAV : RIGHT_NAV;
     auto it = nav.find(_focus);
     if (it != nav.end())
         _focus = it->second;
@@ -137,12 +166,17 @@ void arc::Menu::handleHorizontalNav(Action action) noexcept
 
 void arc::Menu::launchGame() noexcept
 {
+    if (!_username.empty())
+        _pendingCommands.push_back(
+            {Signal::LoadUser, {_username}});
     if (!_gameLibs.empty())
         _pendingCommands.push_back(
-            {Signal::LoadGame, {_gameLibs[_gameSelected]}});
+            {Signal::LoadGame,
+                {_gameLibs[_gameSelected]}});
     if (!_displayLibs.empty())
         _pendingCommands.push_back(
-            {Signal::LoadDisplay, {_displayLibs[_displaySelected]}});
+            {Signal::LoadDisplay,
+                {_displayLibs[_displaySelected]}});
 }
 
 void arc::Menu::handleEnter() noexcept
@@ -164,23 +198,29 @@ void arc::Menu::handleEnter() noexcept
     }
 }
 
-void arc::Menu::handleLetter(Action action) noexcept
+void arc::Menu::handleLetter(
+    Action action) noexcept
 {
     if (_focus != Focus::Username)
         return;
-    if (action == Action::Backspace && !_username.empty()) {
+    if (action == Action::Backspace
+        && !_username.empty()) {
         _username.pop_back();
         return;
     }
     if (_username.size() >= MAX_NAME)
         return;
-    if (action >= Action::A && action <= Action::Z) {
-        auto offset = static_cast<int>(action) - static_cast<int>(Action::A);
-        _username += static_cast<char>('A' + offset);
+    if (action >= Action::A
+        && action <= Action::Z) {
+        auto offset = static_cast<int>(action)
+            - static_cast<int>(Action::A);
+        _username +=
+            static_cast<char>('A' + offset);
     }
 }
 
-void arc::Menu::simulate(const Event event) noexcept
+void arc::Menu::simulate(
+    const Event event) noexcept
 {
     auto action = event.first;
 
@@ -205,130 +245,195 @@ arc::Assets arc::Menu::getAssets() noexcept
     };
 }
 
-arc::RGBA arc::Menu::itemColor(bool selected, bool cursor) const noexcept
+arc::RGBA arc::Menu::itemColor(
+    bool selected, bool cursor) const noexcept
 {
-    constexpr RGBA green = {0, 255, 0, 255};
-    constexpr RGBA yellow = {255, 255, 0, 255};
-    constexpr RGBA gray = {180, 180, 180, 255};
-
     if (selected)
-        return green;
+        return GREEN;
     if (cursor)
-        return yellow;
-    return gray;
+        return YELLOW;
+    return GRAY;
 }
 
-
-void arc::Menu::buildColumnItem(Entities &entities, const ColumnConfig &col,
-    Focus targetFocus, std::size_t i) const
+void arc::Menu::buildColumnItem(
+    Entities &entities,
+    const ColumnConfig &col,
+    Focus targetFocus,
+    std::size_t i) const
 {
-    bool isCursor = (_focus == targetFocus && i == col.cursor);
+    bool isCursor =
+        (_focus == targetFocus && i == col.cursor);
     bool isSelected = (i == col.selected);
     auto prefix = isCursor ? "> " : "  ";
-    auto label = prefix + libFileName(col.libs[i]);
-    
+    auto label =
+        prefix + libFileName(col.libs[i]);
     if (isSelected)
         label += " *";
-    auto row = LIST_START_ROW + static_cast<int>(i);
+    auto row =
+        LIST_START_Y + static_cast<int>(i);
     entities.push_back(
         std::make_unique<MenuEntity>(
             std::pair{col.listX, row},
             EntityConfig{
                 IDX_TEXT, label,
                 itemColor(isSelected, isCursor),
-                GRID_W, GRID_H, 14, 1
-            }));
+                GRID_W, GRID_H,
+                LIST_ITEM_W, 1}));
 }
 
-void arc::Menu::buildColumn(Entities &entities, const ColumnConfig &col,
+void arc::Menu::buildColumn(
+    Entities &entities,
+    const ColumnConfig &col,
     Focus targetFocus) const
 {
-    constexpr RGBA cyan = {0, 200, 255, 255};
     auto header = (_focus == targetFocus)
         ? "[ " + col.title + " ]"
         : "  " + col.title + "  ";
     entities.push_back(
         std::make_unique<MenuEntity>(
-            std::pair{col.colX, 4},
+            std::pair{col.colX, GAMES_HEADER_Y},
             EntityConfig{IDX_TEXT, header,
-                cyan, GRID_W, GRID_H, 12, 1
-            }));
-    for (std::size_t i = 0; i < col.libs.size(); ++i)
-        buildColumnItem(entities, col, targetFocus, i);
+                CYAN, GRID_W, GRID_H,
+                HEADER_W, 1}));
+    for (std::size_t i = 0;
+        i < col.libs.size(); ++i)
+        buildColumnItem(
+            entities, col, targetFocus, i);
 }
 
-void arc::Menu::buildNameInput(Entities &entities) const
+void arc::Menu::buildNameInput(
+    Entities &entities) const
 {
     bool focused = (_focus == Focus::Username);
-    auto nameHeader = focused ? "[ Name ]" : "  Name  ";
-
+    auto nameHeader = focused
+        ? "[ Name ]" : "  Name  ";
     entities.push_back(
         std::make_unique<MenuEntity>(
-            std::pair{16, 8},
+            std::pair{CENTER_X, NAME_Y},
             EntityConfig{IDX_TEXT, nameHeader,
-                cyan, GRID_W, GRID_H, 8, 1
-            }));
-
+                CYAN, GRID_W, GRID_H,
+                PLAY_W, 1}));
     std::string display = _username;
     while (display.size() < MAX_NAME)
         display += '_';
-    auto color = focused ? yellow : white;
-    auto x = (GRID_W - static_cast<int>(MAX_NAME)) / 2;
-    auto idx = IDX_TEXT;
+    auto color = focused ? YELLOW : WHITE;
+    auto inputX = CENTER_X
+        - static_cast<int>(MAX_NAME) / 20;
     entities.push_back(
         std::make_unique<MenuEntity>(
-            std::pair{x, 10},
-            EntityConfig{idx, display, color,
+            std::pair{inputX, NAME_INPUT_Y},
+            EntityConfig{IDX_TEXT, display, color,
                 GRID_W, GRID_H,
-                static_cast<int>(MAX_NAME), 1
-            }));
+                static_cast<int>(MAX_NAME), 1}));
 }
 
-void arc::Menu::buildPlayButton(Entities &entities) const
+void arc::Menu::buildPlayButton(
+    Entities &entities) const
 {
-    constexpr RGBA green = {0, 255, 0, 255};
-    constexpr RGBA white = {255, 255, 255, 255};
-    constexpr RGBA darkGray = {100, 100, 100, 255};
-    bool canPlay = !_gameLibs.empty() && !_displayLibs.empty();
-    RGBA playColor = darkGray;
-
+    bool canPlay =
+        !_gameLibs.empty()
+        && !_displayLibs.empty();
+    RGBA playColor = DARK_GRAY;
     if (canPlay)
-        playColor = (_focus == Focus::Play) ? green : white;
+        playColor = (_focus == Focus::Play)
+            ? GREEN : WHITE;
     entities.push_back(
         std::make_unique<MenuEntity>(
-            std::pair{16, 13},
+            std::pair{CENTER_X, PLAY_Y},
             EntityConfig{IDX_PLAY, "",
-                playColor,
-                GRID_W, GRID_H, 8, 1
-            }));
+                playColor, GRID_W, GRID_H,
+                PLAY_W, 1}));
+}
+
+void arc::Menu::loadScores()
+{
+    auto exePath =
+        std::filesystem::weakly_canonical(
+            "/proc/self/exe");
+    auto scorePath =
+        exePath.parent_path().parent_path()
+        / "scores.txt";
+    std::ifstream file(scorePath);
+    std::string line;
+
+    _scores.clear();
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string game;
+        std::string player;
+        std::string scoreStr;
+        if (!std::getline(iss, game, '|'))
+            continue;
+        if (!std::getline(iss, player, '|'))
+            continue;
+        if (!std::getline(iss, scoreStr))
+            continue;
+        _scores.emplace_back(
+            player + " " + scoreStr
+            + " (" + game + ")",
+            std::stoi(scoreStr));
+    }
+    std::sort(_scores.begin(), _scores.end(),
+        [](const auto &a, const auto &b) {
+            return a.second > b.second;
+        });
+}
+
+void arc::Menu::buildScores(
+    Entities &entities) const
+{
+    entities.push_back(
+        std::make_unique<MenuEntity>(
+            std::pair{SCORES_X, SCORES_HEADER_Y},
+            EntityConfig{IDX_TEXT, "Scores",
+                CYAN, GRID_W, GRID_H,
+                SCORES_W, 1}));
+    auto count = std::min(
+        static_cast<int>(_scores.size()),
+        SCORES_MAX);
+    for (int i = 0; i < count; ++i) {
+        auto row =
+            SCORES_START_Y + i;
+        entities.push_back(
+            std::make_unique<MenuEntity>(
+                std::pair{SCORES_X, row},
+                EntityConfig{IDX_TEXT,
+                    _scores[i].first, GRAY,
+                    GRID_W, GRID_H,
+                    SCORES_W, 1}));
+    }
 }
 
 std::pair<arc::Entities, arc::Sounds>
 arc::Menu::getElements() noexcept
 {
     Entities entities;
-    constexpr RGBA white = {255, 255, 255, 255};
 
     entities.push_back(
         std::make_unique<MenuEntity>(
             std::pair{0, 0},
-            EntityConfig{IDX_BG, "", white,
+            EntityConfig{IDX_BG, "", WHITE,
                 GRID_W, GRID_H,
-                GRID_W, GRID_H
-            }));
+                GRID_W, GRID_H}));
     entities.push_back(
         std::make_unique<MenuEntity>(
-            std::pair{15, 1},
-            EntityConfig{IDX_LOGO, "", white,
-                GRID_W, GRID_H, 10, 2
-            }));
+            std::pair{LOGO_X, LOGO_Y},
+            EntityConfig{IDX_LOGO, "", WHITE,
+                GRID_W, GRID_H,
+                LOGO_W, LOGO_H}));
     buildColumn(entities,
-        {_gameLibs, "Games",_gameCursor, _gameSelected, 1, 2}, Focus::Games);
+        {_gameLibs, "Games",
+            _gameCursor, _gameSelected,
+            GAMES_HEADER_X, GAMES_LIST_X},
+        Focus::Games);
     buildNameInput(entities);
+    buildScores(entities);
     buildPlayButton(entities);
     buildColumn(entities,
-        {_displayLibs, "Displays",_displayCursor, _displaySelected,
-        28, 29}, Focus::Displays);
+        {_displayLibs, "Displays",
+            _displayCursor, _displaySelected,
+            DISP_HEADER_X, DISP_LIST_X},
+        Focus::Displays);
     Sounds sounds;
     return {std::move(entities), std::move(sounds)};
 }

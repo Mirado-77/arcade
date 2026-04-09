@@ -45,6 +45,7 @@ namespace arc {
             std::unique_ptr<DLLoader> _gameLoader;
             std::shared_ptr<IDisplayModule> _display;
             std::shared_ptr<IGameModule> _game;
+            std::string _currentPlayer;
 
             void scanLibs();
             void tryCategorizeLib(const std::string &path);
@@ -56,6 +57,10 @@ namespace arc {
             bool processEvent(const Event &event);
             bool processCommand(const Command &cmd);
             bool processCommands();
+            void handleLoadScore(const Command &cmd);
+            void handleBackToMenu();
+            void handleLoadGame(const Command &cmd);
+            void handleLoadDisplay(const Command &cmd);
     };
 }
 
