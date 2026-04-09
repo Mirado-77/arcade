@@ -150,6 +150,8 @@ namespace arc
         LoadGame,
         RestartGame,
         BackToMenu,
+        LoadUser,
+        LoadScore,
         Quit,
     };
 

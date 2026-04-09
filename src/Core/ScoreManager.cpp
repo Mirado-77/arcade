@@ -61,10 +61,12 @@ void arc::ScoreManager::addScore(const std::string &game,
         [&player](const auto &entry) { return entry.first == player; });
     if (it == board.end()) {
         board.emplace_back(player, score);
+        save();
         return;
     }
     if (score > it->second)
         it->second = score;
+    save();
 }
 
 int arc::ScoreManager::getBestScore(const std::string &game,
