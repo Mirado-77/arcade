@@ -56,14 +56,16 @@ target_compile_options(arcade_sfml PRIVATE)
 
 # SdlibDisplay plugin
 
-find_package(SDL REQUIRED SDL_image SDL_ttf SDL_sound)
+find_package(SDL2 REQUIRED)
+find_package(SDL2_image REQUIRED)
+find_package(SDL2_ttf REQUIRED)
 
 add_library(arcade_sdl2 SHARED
     plugins/SdlibDisplay/SdlibDisplay.cpp
 )
 set_target_properties(arcade_sdl2 PROPERTIES PREFIX "")
 target_include_directories(arcade_sdl2 PRIVATE include plugins/SdlibDisplay)
-target_link_libraries(arcade_sdl2 PRIVATE SDL2)
+target_link_libraries(arcade_sdl2 PRIVATE SDL2::SDL2 SDL2_image::SDL2_image SDL2_ttf::SDL2_ttf)
 target_compile_options(arcade_sdl2 PRIVATE)
 
 # Snake plugin
