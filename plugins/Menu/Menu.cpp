@@ -71,11 +71,9 @@ void arc::Menu::categorizeLib(
 
 void arc::Menu::scanLibs()
 {
-    auto exePath =
-        std::filesystem::weakly_canonical(
-            "/proc/self/exe");
-    auto libDir =
-        exePath.parent_path().parent_path() / "lib";
+    auto exePath = std::filesystem::weakly_canonical("/proc/self/exe")
+        .parent_path();
+    auto libDir = exePath / "lib";
 
     if (!std::filesystem::is_directory(libDir))
         return;
@@ -92,8 +90,7 @@ void arc::Menu::scanLibs()
             categorizeLib(norm);
     }
     std::sort(_gameLibs.begin(), _gameLibs.end());
-    std::sort(
-        _displayLibs.begin(), _displayLibs.end());
+    std::sort(_displayLibs.begin(), _displayLibs.end());
 }
 
 void arc::Menu::moveCursorUp() noexcept
@@ -350,9 +347,7 @@ void arc::Menu::loadScores()
     auto exePath =
         std::filesystem::weakly_canonical(
             "/proc/self/exe");
-    auto scorePath =
-        exePath.parent_path().parent_path()
-        / "scores.txt";
+    auto scorePath = exePath.parent_path() / "scores.txt";
     std::ifstream file(scorePath);
     std::string line;
 

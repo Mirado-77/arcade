@@ -38,7 +38,7 @@ arc::Core::Core(const std::string &displayPath)
 
 std::filesystem::path arc::Core::execDir()
 {
-    return std::filesystem::weakly_canonical("/proc/self/exe").parent_path();
+    return std::filesystem::weakly_canonical("/proc/self/exe");
 }
 
 void arc::Core::scanLibs()
