@@ -1,5 +1,4 @@
-# Arcade | 
-[![Architecture](https://img.shields.io/badge/Architecture-RepoLens-blue)](https://repo-lens-virid.vercel.app/share/PhilibertG/Arcade-perso)
+# Arcade | [![Architecture](https://img.shields.io/badge/Architecture-RepoLens-blue)](https://repo-lens-virid.vercel.app/share/PhilibertG/Arcade-perso)
 
 A retro gaming platform that lets users choose and play classic arcade games through interchangeable graphical libraries, all loaded dynamically at runtime.
 
