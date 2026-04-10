@@ -151,7 +151,13 @@ void arc::SdlibDisplay::drawEntityRect(const std::unique_ptr<IEntity> &entity,
             std::string(1, static_cast<char>(idx + 33)).c_str()
             , _fontColor));
     texture.reset(SDL_CreateTextureFromSurface(_renderer.get(), surface.get()));
-    SDL_RenderCopy(_renderer.get(), texture.get(), nullptr, &Destr);
+    SDL_Rect textr;
+    textr.h = Destr.h / 1.5;
+    textr.w = Destr.w / 3;
+    textr.x = Destr.x;
+    textr.y = Destr.y;
+
+    SDL_RenderCopy(_renderer.get(), texture.get(), nullptr, &textr);
 }
 
 void arc::SdlibDisplay::drawEntity(const std::unique_ptr<IEntity> &entity)
