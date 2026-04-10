@@ -54,7 +54,6 @@ target_include_directories(arcade_sfml PRIVATE include plugins/SfmlDisplay)
 target_link_libraries(arcade_sfml PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
 target_compile_options(arcade_sfml PRIVATE)
 
-<<<<<<< libsdl
 # SdlibDisplay plugin
 
 find_package(SDL2 REQUIRED)
@@ -68,7 +67,7 @@ set_target_properties(arcade_sdl2 PROPERTIES PREFIX "")
 target_include_directories(arcade_sdl2 PRIVATE include plugins/SdlibDisplay)
 target_link_libraries(arcade_sdl2 PRIVATE SDL2::SDL2 SDL2_image::SDL2_image SDL2_ttf::SDL2_ttf)
 target_compile_options(arcade_sdl2 PRIVATE)
-=======
+
 # IrrlichtDisplay plugin
 
 find_library(IRRLICHT_LIB Irrlicht REQUIRED)
@@ -81,7 +80,6 @@ target_include_directories(arcade_irrlicht PRIVATE include plugins/IrrlichtDispl
 target_include_directories(arcade_irrlicht SYSTEM PRIVATE /usr/include/irrlicht)
 target_link_libraries(arcade_irrlicht PRIVATE ${IRRLICHT_LIB})
 target_compile_options(arcade_irrlicht PRIVATE)
->>>>>>> main
 
 # Snake plugin
 
