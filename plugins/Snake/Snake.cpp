@@ -170,6 +170,11 @@ arc::Assets arc::Snake::getAssets() noexcept
     };
 }
 
+int arc::Snake::getScore() const
+{
+    return _score;
+}
+
 std::pair<arc::Entities, arc::Sounds> arc::Snake::getElements() noexcept
 {
     arc::Entities entities;
@@ -233,6 +238,11 @@ bool arc::Snake::isOpen() noexcept
 
 std::vector<arc::Command> arc::Snake::loadCommand() noexcept
 {
+    if (!_open)
+        return {
+            {Signal::LoadScore, {std::to_string(_score)}},
+            {Signal::BackToMenu, {}}
+        };
     return {};
 }
 

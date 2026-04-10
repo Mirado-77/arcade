@@ -244,6 +244,11 @@ arc::Assets arc::Centipede::getAssets() noexcept
     };
 }
 
+int arc::Centipede::getScore() const
+{
+    return _score;
+}
+
 void arc::Centipede::addPlayerEntity(arc::Entities &entities) const noexcept
 {
     constexpr arc::RGBA playerColor = {0, 200, 255, 255};
@@ -310,6 +315,11 @@ bool arc::Centipede::isOpen() noexcept
 
 std::vector<arc::Command> arc::Centipede::loadCommand() noexcept
 {
+    if (!_open)
+        return {
+            {Signal::LoadScore, {std::to_string(_score)}},
+            {Signal::BackToMenu, {}}
+        };
     return {};
 }
 

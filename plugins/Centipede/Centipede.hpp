@@ -77,6 +77,8 @@ namespace arc {
             void addBulletEntity(Entities &entities) const noexcept;
             void addObstacleEntities(Entities &entities) const noexcept;
             void addCentipedeEntities(Entities &entities) const noexcept;
+
+            int getScore() const;
     };
 }
 
