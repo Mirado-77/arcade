@@ -54,6 +54,7 @@ const std::unordered_map<int, arc::Action> arc::NcursesDisplay::KEY_MAP = {
     {'3', Action::Num3}, {'4', Action::Num4}, {'5', Action::Num5},
     {'6', Action::Num6}, {'7', Action::Num7}, {'8', Action::Num8},
     {'9', Action::Num9},
+    {'=', Action::Equal},
 };
 
 arc::NcursesDisplay::NcursesDisplay()

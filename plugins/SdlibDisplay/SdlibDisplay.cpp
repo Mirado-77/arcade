@@ -17,6 +17,7 @@ const std::unordered_map<int, arc::Action> arc::SdlibDisplay::KEY_MAP = {
     {SDLK_F3, Action::F3},
     {SDLK_F4, Action::F4},
     {SDLK_F5, Action::F5},
+    {SDLK_EQUALS, Action::Equal},
     {SDLK_BACKSPACE, Action::Backspace},
     {SDLK_RETURN, Action::Enter},
     {SDLK_KP_ENTER, Action::Enter},
