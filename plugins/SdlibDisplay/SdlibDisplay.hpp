@@ -33,11 +33,14 @@ namespace arc {
             static const std::unordered_map<int, arc::Action> KEY_MAP;
             static const std::unordered_map<int, arc::Action> MOUSE_BUTTON_MAP;
 
+            static constexpr Uint32 FRAME_MS = 1000u / 60u;
+
             std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> _window;
             std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer;
             std::unique_ptr<TTF_Font, decltype(&TTF_CloseFont)> _font;
             bool _hasFont;
-            static constexpr SDL_Color _fontColor = {0, 0, 0, 0};
+            Uint32 _lastFrame;
+            static constexpr SDL_Color _fontColor = {0, 0, 0, 255};
 
             using SurfacePtr = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>;
             using TexturePtr = std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>;
